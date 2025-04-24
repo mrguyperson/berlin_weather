@@ -7,10 +7,10 @@
             "installTinyTex": true
         },
         "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-            "packages": "libudunits2-dev,libxtst6,libxt6,libmagick++-dev"
+            "packages": "libudunits2-dev,libxtst6,libxt6,libmagick++-dev,libglpk-dev,cmake"
         },
         "ghcr.io/rocker-org/devcontainer-features/r-packages:1": {
-            "packages": "renv,tidyverse,here,readxl"
+            "packages": "renv,tidyverse,here,readxl,targets,tarchetypes,crew,showtext,openmeteo,ggborderline"
         },
     },
     "customizations": {
