@@ -22,6 +22,9 @@ top_10_coldest|stem|1a3e8316d7ed4236|a0fc6cec0cd2f071|43719d3d204705ce|570375987
 historical_data|stem|0f231736327c01b2|801f6014505063a7|95974efefbd56665|-678148541||t20208.5198902757s|s10513b|10513|rds|local|vector|||0.634||
 history_with_calendar|stem|2dbf2d13406e412e|caed9f5f2653d1ae|1589700bcfd8e301|1925053235||t20208.5198905998s|s11355b|11355|rds|local|vector|||0.004||
 new_records|stem|b236823758e382ae|858103e938b36c21|18072dc49de7ef47|1676951399||t20208.519891065s|s281b|281|rds|local|vector|||0.006||
+coldest_year|stem|b1ccbeec3ab29a10|ddee060ca2995b47|3a421bbd1a2e2263|-1650029721||t20208.5264991515s|s162b|162|rds|local|vector|||0.338||
+hottest_year|stem|26da07b6aada1d89|9474ec455a325df8|3a421bbd1a2e2263|-271220309||t20208.5265035993s|s162b|162|rds|local|vector|||0.324||
+temperature_slope|stem|1ceab8c8b502d5b9|d4b6af639b69471d|b613302fe03fab90|-1179355425||t20208.5265072024s|s53b|53|rds|local|vector|||0.249||
 get_historical_means|function|c2405b3212013bab
 today|object|563cbb1bc649cc0c
 make_calendar|function|4b640813b4b0d200
@@ -29,6 +32,7 @@ get_top_10_list|function|586c4e8566726d73
 filter_data|function|f8a626b83715deee
 get_most_recent_date|function|c46c8d27d779bf4d
 make_fig_label|function|b583ec8170a91772
+.Random.seed|object|f6597606c0b12b09
 get_new_records|function|d3ebb9f6b0e6f932
 make_historical_data|function|21c913da6638981f
 get_raw_data|function|146f5ac2d7b43542
@@ -40,6 +44,3 @@ get_most_extreme_year|function|60bfc2e4f6a7f5f0
 dummy_legend_data|function|b733836612cd24e2
 calculate_one_year_ago|function|2586200f9a4454ab
 make_plot|function|33a6c0a05c655cd3
-coldest_year|stem|b1ccbeec3ab29a10|ddee060ca2995b47|3a421bbd1a2e2263|-1650029721||t20208.5264991515s|s162b|162|rds|local|vector|||0.338||
-hottest_year|stem|26da07b6aada1d89|9474ec455a325df8|3a421bbd1a2e2263|-271220309||t20208.5265035993s|s162b|162|rds|local|vector|||0.324||
-temperature_slope|stem|1ceab8c8b502d5b9|d4b6af639b69471d|b613302fe03fab90|-1179355425||t20208.5265072024s|s53b|53|rds|local|vector|||0.249||
