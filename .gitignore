@@ -50,3 +50,4 @@ rsconnect/
 
 # PNG files
 *.png
+/.quarto/
