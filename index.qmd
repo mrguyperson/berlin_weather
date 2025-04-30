@@ -42,7 +42,7 @@ tar_load(start_date)
 
 ### Row - value boxes {height="20%"}
 ::: {.valuebox icon="fire" color="#d7191c"}
-Hottest year:
+**Hottest year:**
 ```{r}
 tar_load(hottest_year)
 ```
@@ -52,7 +52,7 @@ tar_load(hottest_year)
 :::
 
 ::: {.valuebox icon="thermometer-snow" color="#2c7bb6"}
-Coldest year:
+**Coldest year:**
 ```{r}
 tar_load(coldest_year)
 ```
@@ -62,7 +62,7 @@ tar_load(coldest_year)
 :::
 
 ::: {.valuebox icon= "exclamation-diamond" color="#daa520"}
-Annual temp. change since 1940:
+**Annual temp. change since 1940:**
 
 ```{r}
 tar_load(temperature_slope)
