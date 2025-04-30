@@ -1,0 +1,147 @@
+---
+title: Weather in Berlin
+format: 
+  dashboard:
+    orientation: columns
+    nav-buttons: [github]
+    github: https://github.com/mrguyperson/berlin_weather/
+    theme: flatly
+logo: images/berlin_skyline.jpg
+
+---
+
+```{r}
+#| label: load-packages
+library(tidyverse)
+library(targets)
+library(showtext)
+library(glue)
+library(openmeteo)
+library(scales)
+library(ggborderline)
+library(gt)
+```
+
+
+```{r}
+#| label: prep-data
+
+source("R/functions.R")
+
+tar_load(filtered_data)
+tar_load(history_with_calendar)
+tar_load(this_year)
+tar_load(new_records)
+tar_load(city)
+tar_load(start_date)
+
+
+```
+
+## Colum {width="80%"}
+
+### Row - value boxes {height="20%"}
+::: {.valuebox icon="fire" color="#d7191c"}
+Hottest year:
+```{r}
+tar_load(hottest_year)
+```
+
+`r hottest_year$year`
+
+:::
+
+::: {.valuebox icon="thermometer-snow" color="#2c7bb6"}
+Coldest year:
+```{r}
+tar_load(coldest_year)
+```
+
+`r coldest_year$year`
+
+:::
+
+::: {.valuebox icon= "exclamation-diamond" color="#daa520"}
+Annual temp. change since 1940:
+
+```{r}
+tar_load(temperature_slope)
+```
+
+
+`r glue("{if_else(temperature_slope > 0, '+', '\u2212')}{temperature_slope}\u00B0C")`
+
+:::
+
+### Row - Plot {height="80%"}
+
+::: {.card title="**Average daily temperatures in Berlin since 1 Jan, 1940**"}
+
+
+```{r}
+#| label: average_daily_temp
+#| fig-width: 8
+#| fig-asp: 0.35
+make_plot(history_with_calendar, this_year, new_records, city, start_date, today())
+```
+Data provided by [Open-meteo](https://open-meteo.com/).
+Data from leap days (i.e., 29 February) are excluded.
+Last updated **`r make_nice_date(today())`**.
+
+:::
+
+## Column
+
+### Row - map
+``` {r}
+library(leaflet)
+
+lat <- geocode(city)$latitude
+long <- geocode(city)$longitude
+country <- geocode(city)$country
+
+cat("title=", glue("**{city}, {country} ({round(lat, 2)}\u00B0, {round(long,2)}\u00B0)**"))
+
+leaflet() |> addTiles() |> 
+  setView(long, lat, zoom = 9)
+```
+
+### Row - temp tables {.tabset height="60%"}
+
+::: {.card title="10 hottest"}
+**Most extreme recorded temperatures**
+``` {r}
+#| label: hottest_temps
+
+tar_load(top_10_hottest)
+
+top_10_hottest %>%
+    mutate(date = make_nice_date(date)) %>%
+    rename(Date = date, "Temperature (\u00B0C)" := temperature) %>%
+    gt() %>%
+    cols_align(align = "right")# %>%
+    # data_color(
+    #     method = "numeric",
+    #     palette = "nord::victory_bonds"
+    # )
+
+
+```
+
+:::
+
+::: {.card title="10 coldest"}
+**Most extreme recorded temperatures**
+```{r}
+
+tar_load(top_10_coldest)
+
+top_10_coldest %>%
+    mutate(date = make_nice_date(date)) %>%
+    rename(Date = date, "Temperature (\u00B0C)" := temperature) %>%
+    gt() %>%
+    cols_align(align = "right")
+
+```
+
+:::
