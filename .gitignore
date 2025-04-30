@@ -50,4 +50,11 @@ rsconnect/
 
 # PNG files
 *.png
+
+# Quarto
 /.quarto/
+/_site/
+_quarto_internal_scss_error.scss
+/cv/.~lock*
+index.html
+index_files/*
