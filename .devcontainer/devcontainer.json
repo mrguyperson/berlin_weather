@@ -6,13 +6,15 @@
             "version": "prerelease",
             "installTinyTex": true
         },
+        "ghcr.io/rocker-org/devcontainer-features/renv-cache:latest": {},
         "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-            "packages": "libudunits2-dev,libxtst6,libxt6,libmagick++-dev,libglpk-dev,cmake,libnode-dev,libgdal-dev,gdal-bin,libgeos-dev,libproj-dev,libsqlite3-dev,libpng-dev"
+            "packages": "libglpk-dev,cmake,libnode-dev,libgdal-dev,gdal-bin,libgeos-dev,libproj-dev,libsqlite3-dev,libpng-dev"
         },
         "ghcr.io/rocker-org/devcontainer-features/r-packages:1": {
-            "packages": "renv,tidyverse,here,readxl,targets,tarchetypes,crew,showtext,openmeteo,ggborderline,gt,leaflet"
+            "packages": "renv"
         },
     },
+    "postCreateCommand": "Rscript .devcontainer/setup.R",
     "customizations": {
         "vscode": {
             "extensions": ["mechatroner.rainbow-csv","mutantdino.resourcemonitor"]
@@ -22,3 +24,5 @@
         }
     }
 }
+
+// libudunits2-dev,libxtst6,libxt6,libmagick++-dev,
