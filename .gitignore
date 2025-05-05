@@ -48,9 +48,6 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# PNG files
-*.png
-
 # Quarto
 /.quarto/
 /_site/
