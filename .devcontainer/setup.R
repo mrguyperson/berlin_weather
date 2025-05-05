@@ -1,10 +1,10 @@
   options(
     # renv.config.pak.enabled = TRUE,
-    repos = c(RSPM = "https://packagemanager.posit.co/cran/2025-04-22")
+    # repos = c(RSPM = "https://packagemanager.posit.co/cran/2025-04-22")
   )
   pkgs <- c(
     "here",
-    "httpgd",
+    "nx10/httpgd",
     "tidyverse",
     "targets",
     "readxl", 

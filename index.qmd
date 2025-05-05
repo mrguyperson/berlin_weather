@@ -6,7 +6,7 @@ format:
     nav-buttons: [github]
     github: https://github.com/mrguyperson/berlin_weather/
     theme: flatly
-logo: images/berlin_skyline.jpg
+logo: images/berlin.png
 
 ---
 
