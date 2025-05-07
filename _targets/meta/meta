@@ -23,13 +23,15 @@ historical_data|stem|8322e2968128121a|801f6014505063a7|085f21ac638f6db0|-6781485
 history_with_calendar|stem|240931276ba3ca8c|caed9f5f2653d1ae|4f2361f2e515165c|1925053235||t20215.3584837488s|s8303b|8303|rds|local|vector|||0.005||
 top_10_hottest|stem|8cf66125b34922b5|e8da981cdfc46440|912c5a4ce6e0ff1b|1808900282||t20215.3611942516s|s249b|249|rds|local|vector|||0.098||
 top_10_coldest|stem|9d197097ce06de29|a0fc6cec0cd2f071|912c5a4ce6e0ff1b|570375987||t20215.3611977931s|s243b|243|rds|local|vector|||0.193||
+this_year|stem|18ba427765d9dfc7|da39363bea2ee892|e61a401e18daaee2|-1775268158||t20215.3828472586s|s1504b|1504|rds|local|vector|||0.628||
+new_records|stem|c2021afdfb6c3b71|858103e938b36c21|1d77919355d7764d|1676951399||t20215.3828479523s|s318b|318|rds|local|vector|||0.01||
 get_historical_means|function|c2405b3212013bab
 make_calendar|function|4b640813b4b0d200
 get_top_10_list|function|d54f0c135a03e423
 filter_data|function|f8a626b83715deee
 get_most_recent_date|function|c46c8d27d779bf4d
 make_fig_label|function|b583ec8170a91772
-.Random.seed|object|f90d5bf029e7218a
+.Random.seed|object|a791098ae96c35d4
 get_new_records|function|5f4400913a568dcc
 make_historical_data|function|d5a55a575cd7a8e8
 remove_incomplete_date|function|1357a245bd0da9e6
@@ -42,6 +44,4 @@ dummy_legend_data|function|54777c8d95f0be93
 calculate_one_year_ago|function|2586200f9a4454ab
 get_this_year|function|f0d28fa2e745f45b
 make_plot|function|8f232a5c0290a5b6
-today|stem|500772de1c7aca73|d3c5d6e3419c5509|2c530c1562a7fbd1|-1005696092||t20215.3828392541s|s79b|79|rds|local|vector|||0.467||
-this_year|stem|18ba427765d9dfc7|da39363bea2ee892|e61a401e18daaee2|-1775268158||t20215.3828472586s|s1504b|1504|rds|local|vector|||0.628||
-new_records|stem|c2021afdfb6c3b71|858103e938b36c21|1d77919355d7764d|1676951399||t20215.3828479523s|s318b|318|rds|local|vector|||0.01||
+today|stem|500772de1c7aca73|d3c5d6e3419c5509|2c530c1562a7fbd1|-1005696092||t20215.3844389816s|s79b|79|rds|local|vector|||0.466||
