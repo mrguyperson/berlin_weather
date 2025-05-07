@@ -11,7 +11,6 @@
     "tarchetypes",
     "showtext", 
     "openmeteo",
-    "ggborderline",
     "gt",
     "leaflet"
   )
