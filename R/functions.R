@@ -19,10 +19,10 @@ make_historical_data <- function(filtered_data, today) {
         filter(
             year(date) != year(today),
             ) %>%
-        summarize( 
-            hourly_temperature_2m = mean(hourly_temperature_2m), 
-            .by = date
-        ) %>%
+        # summarize( 
+        #     hourly_temperature_2m = mean(hourly_temperature_2m), 
+        #     .by = date
+        # ) %>%
         mutate(
             month = month(date),
             mday = mday(date)
@@ -55,10 +55,27 @@ make_calendar <- function(today) {
 
 }
 
+remove_incomplete_date <- function(filtered_data) {
+    last_date <- filtered_data %>%
+        tail(1) %>%
+        pull(date)
+    
+    num_rows <- filtered_data %>%
+        filter(date == last_date) %>%
+        nrow()
+    if(num_rows != 24) {
+        filtered_data %>%
+            filter(date != last_date)
+    } else {
+        filtered_data
+    }
+}
 
 get_this_year <- function(filtered_data) {
 
-    filtered_data %>%
+    data_w_date_check <- remove_incomplete_date(filtered_data)
+
+    data_w_date_check %>%
         filter(
             year(date) == max(year(date))
              ) %>%
@@ -84,9 +101,9 @@ dummy_legend_data <- function(this_year) {
     most_recent_date <- get_most_recent_date(this_year)
     tribble(
         ~x, ~y, ~xend, ~yend, ~label,
-        "2025-05-28", 0, "2025-06-05", 0, glue("Average daily temp. this year up to {day(most_recent_date)} {month(most_recent_date, label = TRUE)}."),
-        "2025-06-01", -2, NA, NA, "All-time high mean temp. set this year",
-        "2025-06-01", -4, NA, NA, "All-time low mean temp. set this year"
+        "2025-05-28", 0, "2025-06-05", 0, glue("Daily temp. range this year up to {day(most_recent_date)} {month(most_recent_date, label = TRUE)}."),
+        "2025-06-01", -3, NA, NA, "All-time daily high temp. set this year",
+        "2025-06-01", -6, NA, NA, "All-time daily low temp. set this year"
     ) %>%
     mutate(
         across(c(x, xend), ~ymd(.x)),
@@ -142,17 +159,26 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
             color = "goldenrod", 
             linewidth = 1.0
             ) +
-        geom_borderline(
+        # geom_point(
+        #     data = this_year,
+        #     aes(x = date, y = this_year_mean),
+        #     color = c("black"),
+        #     size = 0.35
+            # linewidth = 0.6, 
+            # bordercolor = "white",
+            # borderwidth = 0.2, 
+            # ) +
+        geom_linerange(
             data = this_year,
-            aes(x = date, y = this_year_mean),
+            aes(x = date, ymin = this_year_min, ymax = this_year_max),
             color = c("black"),
-            linewidth = 0.6, 
-            bordercolor = "white",
-            borderwidth = 0.2, 
+            linewidth = 0.5, 
+            # bordercolor = "white",
+            # borderwidth = 0.2, 
             ) +
         geom_point(
             data = filter(new_records, new_record == "heat"),
-            aes(x = date, y = this_year_mean),
+            aes(x = date, y = this_year_max),
             color = "black",
             fill = "firebrick",
             shape = 21,
@@ -160,7 +186,7 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
         ) +
         geom_point(
             data = filter(new_records, new_record == "cold"),
-            aes(x = date, y = this_year_mean),
+            aes(x = date, y = this_year_min),
             color = "black",
             fill = "dodgerblue",
             shape = 21,
@@ -253,17 +279,21 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
 
 
 get_top_10_list <- function(filtered_data, type = "hottest") {
-    summarized <-filtered_data %>%
-        summarize(
-            temperature = max(hourly_temperature_2m),
-            .by = date,
-        )
+
     if(type == "hottest") {
-        summarized %>%
+        filtered_data %>%
+            summarize(
+                temperature = max(hourly_temperature_2m),
+                .by = date,
+            ) %>%
             arrange(-temperature) %>%
             head(10)
     } else {
-        summarized %>%
+        filtered_data %>%
+            summarize(
+                temperature = min(hourly_temperature_2m),
+                .by = date,
+            ) %>%
             arrange(temperature) %>%
             head(10)
     }
@@ -274,10 +304,10 @@ get_new_records <- function(history_with_calendar, this_year) {
 
     history_with_calendar %>%
         left_join(this_year, by = join_by(date)) %>%
-        select(date, max, min, this_year_mean) %>%
+        select(date, max, min, this_year_max, this_year_min) %>%
         mutate(new_record = case_when(
-            this_year_mean > max ~ "heat", 
-            this_year_mean < min ~ "cold", 
+            this_year_max > max ~ "heat", 
+            this_year_min < min ~ "cold", 
             .default = NA
         )) %>%
         filter(!is.na(new_record))
