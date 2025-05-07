@@ -8,7 +8,6 @@ tar_option_set(
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-today <- lubridate::today()
 
 list(
   tar_target(
@@ -18,6 +17,11 @@ list(
   tar_target(
     name = start_date,
     command = "1940-01-01"
+  ),
+  tar_target(
+    name = today,
+    command = lubridate::today(),
+    cue = tar_cue(mode = "always")
   ),
   tar_target(
     name = raw_data,

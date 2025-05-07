@@ -34,6 +34,7 @@ tar_load(this_year)
 tar_load(new_records)
 tar_load(city)
 tar_load(start_date)
+tar_load(today)
 
 
 ```
@@ -75,14 +76,14 @@ tar_load(temperature_slope)
 
 ### Row - Plot {height="80%"}
 
-::: {.card title="**Average daily temperatures in Berlin since 1 Jan, 1940**"}
+::: {.card title="**Daily temperatures in Berlin since 1 Jan, 1940**"}
 
 
 ```{r}
 #| label: average_daily_temp
 #| fig-width: 8
 #| fig-asp: 0.35
-make_plot(history_with_calendar, this_year, new_records, city, start_date, today())
+make_plot(history_with_calendar, this_year, new_records, city, start_date, today)
 ```
 Data provided by [Open-meteo](https://open-meteo.com/).
 Data from leap days (i.e., 29 February) are excluded.
