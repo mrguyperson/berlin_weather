@@ -109,7 +109,7 @@ leaflet() |> addTiles() |>
 ### Row - temp tables {.tabset height="60%"}
 
 ::: {.card title="10 hottest"}
-**Most extreme recorded temperatures**
+**Most extreme temperatures in dataset**
 ``` {r}
 #| label: hottest_temps
 
@@ -131,7 +131,7 @@ top_10_hottest %>%
 :::
 
 ::: {.card title="10 coldest"}
-**Most extreme recorded temperatures**
+**Most extreme temperatures in dataset**
 ```{r}
 
 tar_load(top_10_coldest)
