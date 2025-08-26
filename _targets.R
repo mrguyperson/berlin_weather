@@ -15,6 +15,18 @@ list(
     command = "Berlin"
   ), 
   tar_target(
+    name = lat,
+    command = geocode(city)$latitude
+  ),
+  tar_target(
+    name = long,
+    command = geocode(city)$longitude
+  ),
+  tar_target(
+    name = country,
+    command = geocode(city)$country
+  ),
+  tar_target(
     name = start_date,
     command = "1940-01-01"
   ),

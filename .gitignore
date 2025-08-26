@@ -55,3 +55,5 @@ _quarto_internal_scss_error.scss
 /cv/.~lock*
 index.html
 index_files/*
+
+**/*.quarto_ipynb
