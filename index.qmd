@@ -27,7 +27,7 @@ library(gt)
 
 source("R/functions.R")
 
-tar_load(filtered_data)
+# for plot
 tar_load(history_with_calendar)
 tar_load(this_year)
 tar_load(new_records)
@@ -35,6 +35,19 @@ tar_load(city)
 tar_load(start_date)
 tar_load(today)
 
+# for value boxes
+tar_load(hottest_year)
+tar_load(coldest_year)
+tar_load(temperature_slope)
+
+# for map label
+tar_load(lat)
+tar_load(long)
+tar_load(country)
+
+# for tables
+tar_load(top_10_hottest)
+tar_load(top_10_coldest)
 
 ```
 
@@ -43,9 +56,6 @@ tar_load(today)
 ### Row - value boxes {height="20%"}
 ::: {.valuebox icon="fire" color="#d7191c"}
 **Hottest year:**
-```{r}
-tar_load(hottest_year)
-```
 
 `r hottest_year$year`
 
@@ -53,9 +63,6 @@ tar_load(hottest_year)
 
 ::: {.valuebox icon="thermometer-snow" color="#2c7bb6"}
 **Coldest year:**
-```{r}
-tar_load(coldest_year)
-```
 
 `r coldest_year$year`
 
@@ -63,11 +70,6 @@ tar_load(coldest_year)
 
 ::: {.valuebox icon= "exclamation-diamond" color="#daa520"}
 **Annual temp. change since 1940:**
-
-```{r}
-tar_load(temperature_slope)
-```
-
 
 `r glue("{if_else(temperature_slope > 0, '+', '\u2212')}{temperature_slope}\u00B0C")`
 
@@ -79,7 +81,7 @@ tar_load(temperature_slope)
 
 
 ```{r}
-#| label: average_daily_temp
+#| label: average_daily_temp_fig
 #| fig-width: 8
 #| fig-asp: 0.35
 make_plot(history_with_calendar, this_year, new_records, city, start_date, today)
@@ -94,11 +96,11 @@ Last updated **`r make_nice_date(today())`**.
 
 ### Row - map
 ``` {r}
+#| label: interactive-map
+
 library(leaflet)
 
-lat <- geocode(city)$latitude
-long <- geocode(city)$longitude
-country <- geocode(city)$country
+
 
 cat("title=", glue("**{city}, {country} ({round(lat, 2)}\u00B0, {round(long,2)}\u00B0)**"))
 
@@ -112,8 +114,6 @@ leaflet() |> addTiles() |>
 **Most extreme temperatures in dataset**
 ``` {r}
 #| label: hottest_temps
-
-tar_load(top_10_hottest)
 
 top_10_hottest %>%
     mutate(date = make_nice_date(date)) %>%
@@ -133,8 +133,6 @@ top_10_hottest %>%
 ::: {.card title="10 coldest"}
 **Most extreme temperatures in dataset**
 ```{r}
-
-tar_load(top_10_coldest)
 
 top_10_coldest %>%
     mutate(date = make_nice_date(date)) %>%
