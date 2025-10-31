@@ -9,8 +9,13 @@ dataset <- "berlin_weather"
 table <- "daily_observations_partitioned"
 
 # Authenticate
-bq_auth(json_file = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
-
+if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
+  # Running in GitHub Actions
+  bq_auth(json_credentials_json = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
+} else {
+  # Running locally
+  bq_auth(path = "keys/weather-dashboard-key.json")
+}
 # Get the most recent date in BigQuery
 latest_date_query <- glue::glue("
   SELECT MAX(DATE(datetime)) AS latest_date
