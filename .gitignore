@@ -53,7 +53,10 @@ rsconnect/
 /_site/
 _quarto_internal_scss_error.scss
 /cv/.~lock*
-index.html
-index_files/*
+/dashboard/index.html
+/dashboard/index_files/*
 
 **/*.quarto_ipynb
+# renv
+renv/library/
+renv/staging/

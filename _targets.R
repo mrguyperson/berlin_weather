@@ -3,7 +3,7 @@ library(targets)
 
 # Set target options:
 tar_option_set(
-  packages = c("tidyverse", "openmeteo", "glue") 
+  packages = c("tidyverse", "openmeteo", "glue", "bigrquery") 
 )
 
 # Run the R scripts in the R/ folder with your custom functions:
@@ -37,7 +37,7 @@ list(
   ),
   tar_target(
     name = raw_data,
-    command = get_raw_data(city, start_date, today)
+    command = get_raw_data()
   ),
   tar_target(
     name = filtered_data,

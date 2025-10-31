@@ -8,7 +8,7 @@
         },
         "ghcr.io/rocker-org/devcontainer-features/renv-cache:latest": {},
         "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-            "packages": "gdal-bin,libgdal-dev,libgeos-dev,libglpk-dev,libnode-dev,libproj-dev,libsqlite3-dev"
+            "packages": "gdal-bin,libgdal-dev,libgeos-dev,libglpk-dev,libnode-dev,libproj-dev,libsqlite3-dev,libudunits2-dev"
         },
         "ghcr.io/rocker-org/devcontainer-features/r-packages:1": {
             "packages": "renv,pak"

@@ -3,33 +3,51 @@ on:
   push:
     branches: main
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 3 * * *'  # Run daily at 03:00 UTC
 
 name: Quarto Publish
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+
+    env:
+      GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install gdal-bin libgdal-dev libgeos-dev libglpk-dev libnode-dev libproj-dev libsqlite3-dev
+          sudo apt install -y \
+            gdal-bin libgdal-dev libgeos-dev libglpk-dev \
+            libnode-dev libproj-dev libsqlite3-dev libudunits2-dev
+
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 4.5.1
           use-public-rspm: true
-      - name: Install R packages
+
+      - name: Restore renv environment
         uses: r-lib/actions/setup-renv@v2
-      - name: Run targets pipline
-        run: Rscript -e 'targets::tar_make()'
+
+      - name: Update weather data in BigQuery
+        run: |
+          Rscript scripts/update_weather_data.R
+
+      - name: Run targets pipeline
+        run: |
+          Rscript -e 'targets::tar_make()'
+
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
-      - name: Render and Publish 
+
+      - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           target: quarto-pub
-          QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
+          path: dashboard      # folder containing index.qmd and _quarto.yml

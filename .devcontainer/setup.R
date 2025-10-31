@@ -1,6 +1,6 @@
 pkgs <- c(
     "here",
-    "httpgd",
+    "nx10/httpgd",
     "tidyverse",
     "targets",
     "readxl", 
@@ -8,7 +8,8 @@ pkgs <- c(
     "showtext", 
     "openmeteo",
     "gt",
-    "leaflet"
+    "leaflet",
+    "bigrquery"
   )
 
 renv::init()
