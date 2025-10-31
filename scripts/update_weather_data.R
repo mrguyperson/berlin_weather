@@ -9,8 +9,7 @@ dataset <- "berlin_weather"
 table <- "daily_observations_partitioned"
 
 # Authenticate
-# bq_auth(json_file = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
-bq_auth(path = "peaceful-parity-476712-q0-e0413d71db46.json")
+bq_auth(json_file = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
 
 # Get the most recent date in BigQuery
 latest_date_query <- glue::glue("
