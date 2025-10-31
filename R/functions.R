@@ -2,15 +2,19 @@ get_raw_data <- function() {
     project <- "peaceful-parity-476712-q0"
     dataset <- "berlin_weather"
     table <- "daily_observations_partitioned"
-
-    if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
-    # Running in GitHub Actions
-    bq_auth(json_credentials_json = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
-    } else {
-    # Running locally
-    bq_auth(path = "keys/weather-dashboard-key.json")
-    }
     
+    if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
+        message("Authenticating using environment variable key...")
+        key_file <- tempfile(fileext = ".json")
+        writeLines(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"), key_file)
+        bq_auth(path = key_file)
+    } else {
+        message("Authenticating using local key file...")
+        bq_auth(path = "keys/weather-dashboard-key.json")
+    }
+
+    message("Authenticated as: ", bq_test_login()$email)
+
     sql <- glue::glue("
     SELECT *
     FROM `{project}.{dataset}.{table}`

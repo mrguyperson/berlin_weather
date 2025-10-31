@@ -10,12 +10,17 @@ table <- "daily_observations_partitioned"
 
 # Authenticate
 if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
-  # Running in GitHub Actions
-  bq_auth(json_credentials_json = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
+    message("Authenticating using environment variable key...")
+    key_file <- tempfile(fileext = ".json")
+    writeLines(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"), key_file)
+    bq_auth(path = key_file)
 } else {
-  # Running locally
-  bq_auth(path = "keys/weather-dashboard-key.json")
+    message("Authenticating using local key file...")
+    bq_auth(path = "keys/weather-dashboard-key.json")
 }
+
+message("Authenticated as: ", bq_test_login()$email)
+
 # Get the most recent date in BigQuery
 latest_date_query <- glue::glue("
   SELECT MAX(DATE(datetime)) AS latest_date
