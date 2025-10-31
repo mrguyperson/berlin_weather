@@ -60,3 +60,7 @@ _quarto_internal_scss_error.scss
 # renv
 renv/library/
 renv/staging/
+
+# Ignore secrets
+*.json
+keys/

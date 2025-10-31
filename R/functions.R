@@ -1,16 +1,22 @@
 get_raw_data <- function() {
-  project <- "peaceful-parity-476712-q0"
-  dataset <- "berlin_weather"
-  table <- "daily_observations_partitioned"
+    project <- "peaceful-parity-476712-q0"
+    dataset <- "berlin_weather"
+    table <- "daily_observations_partitioned"
 
-  bq_auth(json_file = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
-
-  sql <- glue::glue("
+    if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
+    # Running in GitHub Actions
+    bq_auth(json_credentials_json = Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))
+    } else {
+    # Running locally
+    bq_auth(path = "keys/weather-dashboard-key.json")
+    }
+    
+    sql <- glue::glue("
     SELECT *
     FROM `{project}.{dataset}.{table}`
-  ")
+    ")
 
-  bq_project_query(project, sql) %>%
+    bq_project_query(project, sql) %>%
     bq_table_download() %>%
     arrange(datetime)
 }
