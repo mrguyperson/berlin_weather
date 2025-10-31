@@ -30,10 +30,25 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 4.5.1
-          use-public-rspm: true
 
-      - name: Restore renv environment
-        uses: r-lib/actions/setup-renv@v2
+      - name: Install R packages via pak
+        run: |
+          echo "options(repos = c(CRAN='https://packagemanager.posit.co/cran/2025-10-14'))" >> ~/.Rprofile
+          Rscript -e 'install.packages("pak", repos="https://cloud.r-project.org")'
+          Rscript -e 'pak::pak(c(    
+                                  "here",
+                                  "tidyverse",
+                                  "targets",
+                                  "readxl", 
+                                  "tarchetypes",
+                                  "showtext", 
+                                  "openmeteo",
+                                  "gt",
+                                  "leaflet",
+                                  "bigrquery"
+                                  )
+                                )'
+
 
       - name: Update weather data in BigQuery
         run: |

@@ -19,13 +19,14 @@ library(glue)
 library(openmeteo)
 library(scales)
 library(gt)
+library(here)
 ```
 
 
 ```{r}
 #| label: prep-data
 
-source("R/functions.R")
+source(here("R/functions.R"))
 
 # for plot
 tar_load(history_with_calendar)

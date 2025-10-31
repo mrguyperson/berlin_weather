@@ -3,10 +3,9 @@ library(targets)
 
 # Set target options:
 tar_option_set(
-  packages = c("tidyverse", "openmeteo", "glue", "bigrquery") 
+  packages = c("tidyverse", "openmeteo", "glue", "bigrquery")
 )
 
-# Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 
 list(

@@ -6,15 +6,15 @@
             "version": "prerelease",
             "installTinyTex": true
         },
-        "ghcr.io/rocker-org/devcontainer-features/renv-cache:latest": {},
+        // "ghcr.io/rocker-org/devcontainer-features/renv-cache:latest": {},
         "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-            "packages": "gdal-bin,libgdal-dev,libgeos-dev,libglpk-dev,libnode-dev,libproj-dev,libsqlite3-dev,libudunits2-dev"
+            "packages": "libglpk-dev"
         },
         "ghcr.io/rocker-org/devcontainer-features/r-packages:1": {
-            "packages": "renv,pak"
+            "packages": "tidyverse,here,targets,readxl,tarchetypes,showtext,openmeteo,gt,leaflet,bigrquery"
         },
     },
-    "postCreateCommand": "Rscript .devcontainer/setup.R",
+    // "postCreateCommand": "Rscript .devcontainer/setup.R",
     "customizations": {
         "vscode": {
             "extensions": ["mechatroner.rainbow-csv","mutantdino.resourcemonitor"]
