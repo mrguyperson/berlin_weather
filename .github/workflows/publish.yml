@@ -51,4 +51,3 @@ jobs:
         with:
           target: quarto-pub
           path: dashboard      # folder containing index.qmd and _quarto.yml
-        working-directory: dashboard

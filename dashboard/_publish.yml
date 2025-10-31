@@ -1,4 +1,4 @@
-- source: dashboard/index.qmd
+- source: index.qmd
   quarto-pub:
     - id: 997d9681-730e-448d-9b75-d11ce2d354f3
       url: https://mrguyperson.quarto.pub/berlin_weather
