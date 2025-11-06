@@ -55,7 +55,8 @@ _quarto_internal_scss_error.scss
 /cv/.~lock*
 /dashboard/index.html
 /dashboard/index_files/*
-
+index.html
+index_files/*
 **/*.quarto_ipynb
 # renv
 renv/library/

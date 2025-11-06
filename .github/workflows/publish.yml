@@ -106,17 +106,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      # # --- Build pipeline and publish dashboard ---
-      # - name: Update weather data in BigQuery
-      #   run: Rscript scripts/update_weather_data.R
+      # --- Build pipeline and publish dashboard ---
+      - name: Update weather data in BigQuery
+        run: Rscript scripts/update_weather_data.R
 
-      # - name: Run targets pipeline
-      #   run: Rscript -e 'targets::tar_make()'
+      - name: Run targets pipeline
+        run: Rscript -e 'targets::tar_make()'
 
-      # - name: Set up Quarto
-      #   uses: quarto-dev/quarto-actions/setup@v2
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
 
-      # - name: Render and Publish
-      #   uses: quarto-dev/quarto-actions/publish@v2
-      #   with:
-      #     target: quarto-pub
+      - name: Render and Publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: quarto-pub
