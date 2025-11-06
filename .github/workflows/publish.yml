@@ -19,6 +19,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # --- Detect Ubuntu codename and set RSPM dynamically ---
+      - name: Detect Ubuntu codename and set RSPM
+        id: detect-rspm
+        run: |
+          CODENAME=$(lsb_release -cs)
+          SNAPSHOT_DATE="2025-02-28"
+          echo "Detected Ubuntu codename: $CODENAME"
+          echo "RSPM=https://packagemanager.posit.co/cran/__linux__/${CODENAME}/${SNAPSHOT_DATE}" >> $GITHUB_ENV
+
       - name: Install system dependencies
         run: |
           sudo apt update
@@ -29,40 +38,85 @@ jobs:
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: 4.5.1
+          r-version: 4.4.3
+          use-public-rspm: true
 
-      - name: Install R packages via pak
-        run: |
-          echo "options(repos = c(CRAN='https://packagemanager.posit.co/cran/2025-10-14'))" >> ~/.Rprofile
-          Rscript -e 'install.packages("pak", repos="https://cloud.r-project.org")'
-          Rscript -e 'pak::pak(c(    
-                                  "here",
-                                  "tidyverse",
-                                  "targets",
-                                  "readxl", 
-                                  "tarchetypes",
-                                  "showtext", 
-                                  "openmeteo",
-                                  "gt",
-                                  "leaflet",
-                                  "bigrquery"
-                                  )
-                                )'
-
-
-      - name: Update weather data in BigQuery
-        run: |
-          Rscript scripts/update_weather_data.R
-
-      - name: Run targets pipeline
-        run: |
-          Rscript -e 'targets::tar_make()'
-
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-
-      - name: Render and Publish
-        uses: quarto-dev/quarto-actions/publish@v2
+      # --- Restore caches (pak + R library) ---
+      - name: Restore pak cache
+        uses: actions/cache@v4
         with:
-          target: quarto-pub
-          path: dashboard      # folder containing index.qmd and _quarto.yml
+          path: |
+            ~/.local/share/R/pak
+            ~/.cache/R/pak
+          key: ${{ runner.os }}-pak-${{ hashFiles('**/DESCRIPTION', '**/*.R', '**/*.Rmd', '**/*.qmd', '**/*.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pak-
+
+      - name: Restore R library cache
+        uses: actions/cache@v4
+        with:
+          path: ~/R
+          key: ${{ runner.os }}-rlib-${{ hashFiles('**/DESCRIPTION', '**/*.R', '**/*.Rmd', '**/*.qmd', '**/*.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-rlib-
+
+      # --- Install R packages using pak binaries ---
+      - name: Install R packages via pak (binary mode)
+        run: |
+          # Make sure all R sessions share the same CRAN mirror
+          echo "options(repos = c(CRAN='${RSPM}'))" >> ~/.Rprofile
+
+          # Install pak if not cached
+          Rscript -e 'if (!"pak" %in% rownames(installed.packages())) install.packages("pak", repos="https://cloud.r-project.org")'
+
+          # Use pak to install dependencies from binaries
+          Rscript -e '
+            Sys.setenv(RSPM = Sys.getenv("RSPM"))
+            pak::pak(c(
+              "here","tidyverse","targets","readxl","tarchetypes",
+              "showtext","openmeteo","gt","leaflet","bigrquery"
+            ))
+          '
+
+      # --- Save caches back (pak + R library) ---
+      - name: Save pak cache
+        if: success()
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/R/pak
+            ~/.cache/R/pak
+          key: ${{ runner.os }}-pak-${{ hashFiles('**/DESCRIPTION', '**/*.R', '**/*.Rmd', '**/*.qmd', '**/*.yml') }}
+
+      - name: Save R library cache
+        if: success()
+        uses: actions/cache@v4
+        with:
+          path: ~/R
+          key: ${{ runner.os }}-rlib-${{ hashFiles('**/DESCRIPTION', '**/*.R', '**/*.Rmd', '**/*.qmd', '**/*.yml') }}
+
+      # --- Automatic cache cleanup (uses GitHub CLI) ---
+      - name: Clean up old caches
+        if: always()
+        run: |
+          echo "Checking for old caches to delete..."
+          gh cache list --sort created_at --limit 100 |
+            awk 'NR>5 {print $1}' |
+            xargs -r -n1 gh cache delete || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # # --- Build pipeline and publish dashboard ---
+      # - name: Update weather data in BigQuery
+      #   run: Rscript scripts/update_weather_data.R
+
+      # - name: Run targets pipeline
+      #   run: Rscript -e 'targets::tar_make()'
+
+      # - name: Set up Quarto
+      #   uses: quarto-dev/quarto-actions/setup@v2
+
+      # - name: Render and Publish
+      #   uses: quarto-dev/quarto-actions/publish@v2
+      #   with:
+      #     target: quarto-pub
