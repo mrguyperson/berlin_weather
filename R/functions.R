@@ -1,7 +1,7 @@
 get_raw_data <- function() {
     project <- "peaceful-parity-476712-q0"
     dataset <- "berlin_weather"
-    table <- "daily_observations_partitioned"
+    table <- "daily_observations"
 
     if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
         message("Authenticating using environment variable key...")
