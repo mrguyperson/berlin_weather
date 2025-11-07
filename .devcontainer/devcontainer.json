@@ -11,16 +11,14 @@
         "mutantdino.resourcemonitor"
       ],
       "settings": {
+        "r.rterm.linux": "/root/.local/bin/radian",
         "r.bracketedPaste": true,
-        "r.alwaysUseActiveTerminal": true,
-        "r.rterm.linux": "/usr/local/bin/radian"
+        "r.alwaysUseActiveTerminal": true
       }
     }
   },
 
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {}
-  },
-
-  "postCreateCommand": "which radian || pip install radian"
+  }
 }

@@ -20,11 +20,23 @@ RUN apt-get update && apt-get install -y -y --no-install-recommends \
     libxml2-dev \
     libfontconfig1-dev \
     libfreetype6-dev \
-    python3-pip \
     wget \
     ca-certificates \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+
+# ------------------------------------------------------------------------------
+# Install python, pip, and radian
+# ------------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-venv \
+    pipx && \
+    pipx ensurepath && \
+    pipx install radian && \
+    echo 'export PATH="$PATH:/root/.local/bin"' >> /etc/profile
+
 
 # ------------------------------------------------------------------------------
 # Install Quarto
