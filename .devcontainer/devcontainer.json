@@ -9,12 +9,7 @@
         "Ikuyadeu.r-pack",
         "mechatroner.rainbow-csv",
         "mutantdino.resourcemonitor"
-      ],
-      "settings": {
-        "r.rterm.linux": "/root/.local/bin/radian",
-        "r.bracketedPaste": true,
-        "r.alwaysUseActiveTerminal": true
-      }
+      ]
     }
   },
 
