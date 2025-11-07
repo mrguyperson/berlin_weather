@@ -47,6 +47,7 @@ RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
 # ------------------------------------------------------------------------------
 
 RUN install2.r --error --skipinstalled \
+    languageserver \
     here \
     tidyverse \
     igraph \
