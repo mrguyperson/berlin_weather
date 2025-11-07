@@ -9,7 +9,8 @@
         "Ikuyadeu.r-pack",
         "mechatroner.rainbow-csv",
         "mutantdino.resourcemonitor",
-        "rdebugger.r-debugger"
+        "rdebugger.r-debugger",
+        "quarto.quarto"
       ]
     }
   },

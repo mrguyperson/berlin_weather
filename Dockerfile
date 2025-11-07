@@ -65,6 +65,7 @@ RUN install2.r --error --skipinstalled \
     bigrquery \
     gt \
     leaflet \
+    showtext \
     quarto
 
 RUN Rscript -e 'install.packages("vscDebugger", repos = "https://manuelhentschel.r-universe.dev")'

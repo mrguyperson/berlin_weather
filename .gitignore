@@ -58,6 +58,7 @@ _quarto_internal_scss_error.scss
 index.html
 index_files/*
 **/*.quarto_ipynb
+
 # renv
 renv/library/
 renv/staging/
