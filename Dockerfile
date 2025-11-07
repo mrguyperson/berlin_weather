@@ -48,7 +48,6 @@ RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
 
 RUN install2.r --error --skipinstalled \
     languageserver \
-    vscDebugger \
     here \
     tidyverse \
     igraph \
@@ -65,6 +64,8 @@ RUN install2.r --error --skipinstalled \
     gt \
     leaflet \
     quarto
+
+RUN Rscript -e 'install.packages("vscDebugger", repos = "https://manuelhentschel.r-universe.dev")'
 
 # ------------------------------------------------------------------------------
 # Set working directory
