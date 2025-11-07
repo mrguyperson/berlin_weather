@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Base image: stable R environment
 # ------------------------------------------------------------------------------
-FROM rocker/r-ver:4.4.2
+FROM rocker/r-ver:4.4.3
 
 # ------------------------------------------------------------------------------
 # System libraries needed for your workflows
@@ -32,13 +32,6 @@ RUN apt-get update && apt-get install -y \
 RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
     && dpkg -i quarto-linux-amd64.deb \
     && rm quarto-linux-amd64.deb
-
-# ------------------------------------------------------------------------------
-# Pin CRAN to a reproducible snapshot
-# ------------------------------------------------------------------------------
-ENV CRAN=https://packagemanager.posit.co/cran/2025-02-28
-
-RUN echo "options(repos = c(CRAN='${CRAN}'))" >> /usr/local/lib/R/etc/Rprofile.site
 
 # ------------------------------------------------------------------------------
 # Install R packages using install2.r
