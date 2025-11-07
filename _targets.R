@@ -36,7 +36,9 @@ list(
   ),
   tar_target(
     name = raw_data,
-    command = get_raw_data()
+    command = get_raw_data(),
+    cue = tar_cue(mode = "always")
+
   ),
   tar_target(
     name = filtered_data,
