@@ -1,25 +1,13 @@
-name: Weather Dashboard Publish
+name: Update Weather + Publish Dashboard
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
   schedule:
-    - cron: "0 3 * * *"    # run daily at 03:00 UTC
-
-permissions:
-  contents: read
+    - cron: "0 3 * * *"  # daily at 03:00 UTC
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-
-    # ------------------------------------------------------------
-    # Use your custom Docker image for a reproducible environment
-    # ------------------------------------------------------------
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
-      options: --user root
 
     env:
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
@@ -29,23 +17,28 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # ------------------------------------------------------------
-      # Update BigQuery with new weather data
-      # ------------------------------------------------------------
-      - name: Update weather observations
-        run: Rscript scripts/update_weather_data.R
+      - name: Pull container
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/weather-dashboard:latest
 
-      # ------------------------------------------------------------
-      # Build your analysis pipeline
-      # ------------------------------------------------------------
+      - name: Run update weather
+        run: |
+          docker run --rm \
+            -e GCP_SERVICE_ACCOUNT_KEY="${GCP_SERVICE_ACCOUNT_KEY}" \
+            -v "$PWD":/project \
+            ghcr.io/${{ github.repository_owner }}/weather-dashboard:latest \
+            Rscript scripts/update_weather_data.R
+
       - name: Run targets pipeline
-        run: Rscript -e 'targets::tar_make()'
+        run: |
+          docker run --rm \
+            -v "$PWD":/project \
+            ghcr.io/${{ github.repository_owner }}/weather-dashboard:latest \
+            Rscript -e 'targets::tar_make()'
 
-      # ------------------------------------------------------------
-      # Publish dashboard to Quarto Pub
-      # (includes render automatically)
-      # ------------------------------------------------------------
-      - name: Publish dashboard
+      - name: Publish via Quarto
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           target: quarto-pub
+        env:
+          QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
