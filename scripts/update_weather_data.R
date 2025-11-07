@@ -9,6 +9,7 @@ library(purrr)
 library(tibble)
 library(glue)
 library(tidyr)
+library(openmeteo)
 
 # ----------------------------------------
 # 0. CRAN repo (optional)
