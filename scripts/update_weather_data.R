@@ -12,13 +12,6 @@ library(tidyr)
 library(openmeteo)
 
 # ----------------------------------------
-# 0. CRAN repo (optional)
-# ----------------------------------------
-if (nzchar(Sys.getenv("RSPM"))) {
-  options(repos = c(CRAN = Sys.getenv("RSPM")))
-}
-
-# ----------------------------------------
 # 1. AUTHENTICATION
 # ----------------------------------------
 if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {

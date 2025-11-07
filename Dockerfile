@@ -7,7 +7,7 @@ FROM rocker/r-ver:4.4.3
 # System libraries needed for your workflows
 # ------------------------------------------------------------------------------
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y -y --no-install-recommends \
     gdal-bin \
     libgdal-dev \
     libgeos-dev \
@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libfontconfig1-dev \
     libfreetype6-dev \
+    python3-pip \
     wget \
     ca-certificates \
     git \
@@ -47,6 +48,7 @@ RUN install2.r --error --skipinstalled \
     dplyr \
     lubridate \
     jsonlite \
+    httpgd \
     httr \
     readxl \
     openmeteo \

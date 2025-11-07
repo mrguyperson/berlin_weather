@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "Dockerfile"
+      - .github/workflows/build-image.yml
   workflow_dispatch:
 
 permissions:
