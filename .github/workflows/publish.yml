@@ -36,9 +36,9 @@ jobs:
           options: >
             --user root
             --volume ${{ github.workspace }}:/work
-            --env GCP_SERVICE_ACCOUNT_KEY="${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}"
           run: |
             cd /work
+            echo "Key exists?"; [ -n "$GCP_SERVICE_ACCOUNT_KEY" ] && echo "yes"
             Rscript scripts/update_weather_data.R
             Rscript -e 'targets::tar_make()'
       - name: Setup Quarto
