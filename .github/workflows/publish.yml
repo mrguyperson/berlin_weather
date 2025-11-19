@@ -3,9 +3,9 @@ name: Update Weather and Publish
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: ["main"]
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * *"   # Daily run
   workflow_run:
     workflows: ["Build Weather Image"]
     types: [completed]
@@ -15,32 +15,30 @@ permissions:
 
 jobs:
   publish:
-    # Allow: push, schedule, manual, AND success of image build
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success')
+    # Only run after successful image build, or push, or schedule, or manual
+    if: ${{ github.event.workflow_run.conclusion == 'success'
+            || github.event_name == 'push'
+            || github.event_name == 'schedule'
+            || github.event_name == 'workflow_dispatch' }}
 
     runs-on: ubuntu-latest
-
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
-      options: --user root --volume ${{ github.workspace }}/.git:/work/.git
 
     env:
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
     steps:
-      - name: Check out
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Update weather
-        run: Rscript scripts/update_weather_data.R
-
-      - name: Build targets
-        run: Rscript -e 'targets::tar_make()'
+      - name: Run update & targets in container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
+          options: --user root
+          run: |
+            Rscript scripts/update_weather_data.R
+            Rscript -e 'targets::tar_make()'
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Publish dashboard
         uses: quarto-dev/quarto-actions/publish@v2
