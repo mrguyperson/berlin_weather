@@ -244,15 +244,16 @@ if (!is.na(last_table_date) && yesterday > last_table_date) {
 # 7. STAGING
 # ----------------------------------------
 
+# If BOTH are empty, exit early
+if (nrow(era5_upgrade_df) == 0 && nrow(new_nonera5_df) == 0) {
+  message("No ERA5 upgrades and no new non-ERA5 data. Exiting.")
+  log_event("nothing_to_upload")
+  quit(save = "no")
+}
+
 staging <- bind_rows(era5_upgrade_df, new_nonera5_df) %>%
   arrange(datetime, desc(model)) %>%
   distinct(datetime, .keep_all = TRUE)
-
-if (nrow(staging) == 0) {
-  log_event("nothing_to_upload")
-  message("No data to upload. Exiting.")
-  quit(save="no")
-}
 
 log_event("staged_rows", rows_written = nrow(staging))
 
