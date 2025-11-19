@@ -33,8 +33,11 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
-          options: --user root
+          options: >
+            --user root
+            --volume ${{ github.workspace }}:/work
           run: |
+            cd /work
             Rscript scripts/update_weather_data.R
             Rscript -e 'targets::tar_make()'
       - name: Setup Quarto
