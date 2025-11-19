@@ -1,3 +1,13 @@
+get_city_coords <- function(city) {
+    tibble(city = city) %>%
+        geocode(
+            city,
+            method = "osm",
+            lat = "latitude",
+            long = "longitude"
+        )
+}
+
 get_raw_data <- function() {
     project <- "peaceful-parity-476712-q0"
     dataset <- "berlin_weather"

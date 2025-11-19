@@ -1,24 +1,22 @@
 name: Update Weather and Publish
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_run:
+    workflows: ["Build Custom Weather Image"]
+    types: [completed]
+
   schedule:
     - cron: "0 3 * * *"
+
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Build Weather Image"]
-    types: [completed]
 
 jobs:
   publish:
     if: >
-      github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success')
-
+      github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
 
     container:

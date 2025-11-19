@@ -66,6 +66,7 @@ RUN install2.r --error --skipinstalled \
     gt \
     leaflet \
     showtext \
+    tidygeocoder \
     quarto
 
 RUN Rscript -e 'install.packages("vscDebugger", repos = "https://manuelhentschel.r-universe.dev")'

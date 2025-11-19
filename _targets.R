@@ -3,7 +3,7 @@ library(targets)
 
 # Set target options:
 tar_option_set(
-  packages = c("tidyverse", "openmeteo", "glue", "bigrquery")
+  packages = c("tidyverse", "tidygeocoder", "glue", "bigrquery")
 )
 
 tar_source()
@@ -14,17 +14,22 @@ list(
     command = "Berlin"
   ), 
   tar_target(
+    name = country,
+    command = "Germany"
+  ),
+  tar_target(
+    name = city_coords,
+    command = get_city_coords(city)
+  ),
+  tar_target(
     name = lat,
-    command = geocode(city)$latitude
+    command = city_coords$latitude
   ),
   tar_target(
     name = long,
-    command = geocode(city)$longitude
+    command = city_coords$longitude
   ),
-  tar_target(
-    name = country,
-    command = geocode(city)$country
-  ),
+
   tar_target(
     name = start_date,
     command = "1940-01-01"
