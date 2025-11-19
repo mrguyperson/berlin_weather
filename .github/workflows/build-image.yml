@@ -1,35 +1,33 @@
-name: Build Custom Weather Image
+name: Build Weather Image
 
 on:
-  push:
-    paths:
-      - "Dockerfile"
-      - .github/workflows/build-image.yml
   workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
+  push:
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Check out repository
+      - name: Check out
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log into GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build container
         run: |
           docker build -t ghcr.io/${{ github.repository_owner }}/weather-image:latest .
 
-      - name: Push Docker image
+      - name: Push container
         run: |
           docker push ghcr.io/${{ github.repository_owner }}/weather-image:latest

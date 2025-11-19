@@ -1,23 +1,41 @@
 name: Update Weather and Publish
 
 on:
-  workflow_run:
-    workflows: ["Build Custom Weather Image"]
-    types: [completed]
+  # Manual run
+  workflow_dispatch:
 
+  # Daily schedule
   schedule:
     - cron: "0 3 * * *"
 
-  workflow_dispatch:
+  # Publish automatically when the image finishes building
+  workflow_run:
+    workflows: ["Build Weather Image"]
+    types: [completed]
+
+  # Always try publishing on push
+  push:
+    branches: ["main"]
 
 jobs:
   publish:
+    # Logic:
+    # 1. Run if this is a push
+    # 2. Run if this is a schedule
+    # 3. Run if manually dispatched
+    # 4. Run after Build Image ONLY if the build succeeded
     if: >
+      github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success')
+       github.event.workflow_run.conclusion == 'success')
+
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
 
     container:
       image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
@@ -25,22 +43,19 @@ jobs:
 
     env:
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
 
     steps:
-      - name: Check out
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Update weather
         run: Rscript scripts/update_weather_data.R
 
-      - name: Run targets pipeline
+      - name: Build targets pipeline
         run: Rscript -e 'targets::tar_make()'
 
       - name: Publish dashboard
         uses: quarto-dev/quarto-actions/publish@v2
-      - name: Publish dashboard
-        uses: quarto-dev/quarto-actions/publish@v2
-        env:
-          QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
         with:
           target: quarto-pub
