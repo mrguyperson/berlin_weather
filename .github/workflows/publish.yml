@@ -36,6 +36,7 @@ jobs:
           options: >
             --user root
             --volume ${{ github.workspace }}:/work
+            --env GCP_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
           run: |
             cd /work
             Rscript scripts/update_weather_data.R
