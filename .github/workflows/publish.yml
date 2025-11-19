@@ -27,7 +27,7 @@ jobs:
 
     container:
       image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
-      options: --user root
+      options: --user root --volume ${{ github.workspace }}/.git:/work/.git
 
     env:
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
