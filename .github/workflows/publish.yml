@@ -1,51 +1,45 @@
 name: Update Weather and Publish
 
 on:
-  workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   schedule:
-    - cron: "0 3 * * *"   # Daily run
+    - cron: "0 3 * * *"
+  workflow_dispatch:
   workflow_run:
     workflows: ["Build Weather Image"]
     types: [completed]
 
-permissions:
-  contents: read
-
 jobs:
   publish:
-    # Only run after successful image build, or push, or schedule, or manual
-    if: ${{ github.event.workflow_run.conclusion == 'success'
-            || github.event_name == 'push'
-            || github.event_name == 'schedule'
-            || github.event_name == 'workflow_dispatch' }}
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
 
     runs-on: ubuntu-latest
 
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
+      options: --user root
+
     env:
       GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
 
     steps:
-      - name: Checkout code
+      - name: Check out
         uses: actions/checkout@v4
-      - name: Run update & targets in container
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
-          options: >
-            --user root
-            --volume ${{ github.workspace }}:/work
-          run: |
-            cd /work
-            echo "Key exists?"; [ -n "$GCP_SERVICE_ACCOUNT_KEY" ] && echo "yes"
-            Rscript scripts/update_weather_data.R
-            Rscript -e 'targets::tar_make()'
-      - name: Setup Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Update weather
+        run: Rscript scripts/update_weather_data.R
+
+      - name: Run targets pipeline
+        run: Rscript -e 'targets::tar_make()'
 
       - name: Publish dashboard
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           target: quarto-pub
-          QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
