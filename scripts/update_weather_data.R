@@ -93,6 +93,14 @@ fetch_day_openmeteo <- function(day, api_model, label_model) {
     mutate(
       date = as_date(datetime),
       model = label_model
+    ) %>%
+    # ensure that no other columns are added
+    select(
+      datetime,
+      hourly_temperature_2m,
+      hourly_precipitation,
+      date,
+      model
     )
 }
 
