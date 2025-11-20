@@ -4,7 +4,7 @@ format:
   dashboard:
     orientation: columns
     nav-buttons: 
-      - icons: github
+      - icon: github
         href: https://github.com/mrguyperson/berlin_weather/
     theme: flatly
 logo: images/berlin.png
