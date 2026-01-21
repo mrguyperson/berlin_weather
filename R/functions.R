@@ -126,13 +126,14 @@ add_calendar_to_historical <- function(calendar, historical_data) {
         select(-day)
 }
 
-dummy_legend_data <- function(this_year) {
-    most_recent_date <- get_most_recent_date(this_year)
+dummy_legend_data <- function(this_year_data) {
+    most_recent_date <- get_most_recent_date(this_year_data)
+    current_year <- year(most_recent_date)
     tribble(
         ~x, ~y, ~xend, ~yend, ~label,
-        "2025-05-28", 0, "2025-06-05", 0, glue("Daily temp. range this year up to {day(most_recent_date)} {month(most_recent_date, label = TRUE)}."),
-        "2025-06-01", -3, NA, NA, "All-time daily high temp. set this year",
-        "2025-06-01", -6, NA, NA, "All-time daily low temp. set this year"
+        glue("{current_year}-05-28"), 0, glue("{current_year}-06-05"), 0, glue("Daily temp. range this year up to {day(most_recent_date)} {month(most_recent_date, label = TRUE)}."),
+        glue("{current_year}-06-01"), -3, NA, NA, "All-time daily high temp. set this year",
+        glue("{current_year}-06-01"), -6, NA, NA, "All-time daily low temp. set this year"
     ) %>%
     mutate(
         across(c(x, xend), ~ymd(.x)),
