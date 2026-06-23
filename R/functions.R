@@ -1,6 +1,6 @@
 get_city_coords <- function(city) {
     tibble(city = city) %>%
-        geocode(
+        tidygeocoder::geocode(
             city,
             method = "osm",
             lat = "latitude",
