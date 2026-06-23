@@ -40,9 +40,6 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Update weather
-        run: Rscript scripts/update_weather_data.R
-
       - name: Build targets
         run: Rscript -e 'targets::tar_make()'
 
