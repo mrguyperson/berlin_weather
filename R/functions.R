@@ -8,30 +8,13 @@ get_city_coords <- function(city) {
         )
 }
 
-get_raw_data <- function() {
-    project <- "peaceful-parity-476712-q0"
-    dataset <- "berlin_weather"
-    table <- "daily_observations"
+get_raw_data <- function(city, start_date, today, hourly = "temperature_2m") {
 
-    if (nzchar(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"))) {
-        message("Authenticating using environment variable key...")
-        key_file <- tempfile(fileext = ".json")
-        writeLines(Sys.getenv("GCP_SERVICE_ACCOUNT_KEY"), key_file)
-        bq_auth(path = key_file)
-    } else {
-        message("Authenticating using local key file...")
-        bq_auth(path = "keys/weather-dashboard-key.json")
-    }
+    weather_history(city, start = start_date, end = today, hourly)
 
-    sql <- glue::glue("
-    SELECT *
-    FROM `{project}.{dataset}.{table}`
-    ")
 
-    bq_project_query(project, sql) %>%
-    bq_table_download() %>%
-    arrange(datetime)
 }
+
 
 
 filter_data <- function(filtered_data) {

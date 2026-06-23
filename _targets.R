@@ -3,7 +3,7 @@ library(targets)
 
 # Set target options:
 tar_option_set(
-  packages = c("tidyverse", "tidygeocoder", "glue", "bigrquery")
+  packages = c("tidyverse", "tidygeocoder", "glue", "openmeteo")
 )
 
 tar_source()
@@ -41,9 +41,7 @@ list(
   ),
   tar_target(
     name = raw_data,
-    command = get_raw_data(),
-    cue = tar_cue(mode = "always")
-
+    command = get_raw_data(city, start_date, today)
   ),
   tar_target(
     name = filtered_data,
