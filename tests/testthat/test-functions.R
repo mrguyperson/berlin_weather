@@ -148,3 +148,53 @@ test_that("filter_data excludes leap days", {
 
     expect_equal(result$date, as.Date(c("2024-02-28", "2024-03-01")))
 })
+
+test_that("remove_incomplete_date removes an ordered partial final day", {
+    complete_day <- data.frame(
+        date = rep(as.Date("2025-01-01"), 24),
+        hour = 0:23
+    )
+    partial_day <- data.frame(
+        date = rep(as.Date("2025-01-02"), 5),
+        hour = 0:4
+    )
+
+    result <- remove_incomplete_date(bind_rows(complete_day, partial_day))
+
+    expect_equal(result, complete_day)
+})
+
+test_that("remove_incomplete_date retains a complete final day", {
+    first_day <- data.frame(
+        date = rep(as.Date("2025-01-01"), 24),
+        hour = 0:23
+    )
+    final_day <- data.frame(
+        date = rep(as.Date("2025-01-02"), 24),
+        hour = 0:23
+    )
+    response <- bind_rows(first_day, final_day)
+
+    expect_equal(remove_incomplete_date(response), response)
+})
+
+test_that("remove_incomplete_date is independent of row order", {
+    complete_day <- data.frame(
+        date = rep(as.Date("2025-01-01"), 24),
+        hour = 0:23
+    )
+    partial_day <- data.frame(
+        date = rep(as.Date("2025-01-02"), 5),
+        hour = 0:4
+    )
+    ordered <- bind_rows(complete_day, partial_day)
+    unsorted <- bind_rows(ordered[-1, ], ordered[1, ])
+
+    ordered_result <- remove_incomplete_date(ordered)
+    unsorted_result <- remove_incomplete_date(unsorted)
+
+    expect_equal(
+        arrange(unsorted_result, date, hour),
+        arrange(ordered_result, date, hour)
+    )
+})

@@ -130,8 +130,8 @@ make_calendar <- function(today) {
 
 remove_incomplete_date <- function(filtered_data) {
     last_date <- filtered_data %>%
-        tail(1) %>%
-        pull(date)
+        pull(date) %>%
+        max()
     
     num_rows <- filtered_data %>%
         filter(date == last_date) %>%
