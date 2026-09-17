@@ -8,8 +8,7 @@ pkgs <- c(
     "showtext", 
     "openmeteo",
     "gt",
-    "leaflet",
-    "bigrquery"
+    "leaflet"
   )
 
 renv::init()
