@@ -15,6 +15,29 @@ get_raw_data <- function(city, start_date, today, hourly = "temperature_2m") {
 
 }
 
+validate_raw_data <- function(raw_data) {
+    if (!is.data.frame(raw_data)) {
+        stop("Open-Meteo response must be data-frame-like.", call. = FALSE)
+    }
+
+    if (nrow(raw_data) == 0) {
+        stop("Open-Meteo response is empty.", call. = FALSE)
+    }
+
+    required_columns <- c("datetime", "hourly_temperature_2m")
+    missing_columns <- setdiff(required_columns, names(raw_data))
+
+    if (length(missing_columns) > 0) {
+        stop(
+            "Open-Meteo response is missing required columns: ",
+            paste(missing_columns, collapse = ", "),
+            call. = FALSE
+        )
+    }
+
+    raw_data
+}
+
 
 
 filter_data <- function(filtered_data) {

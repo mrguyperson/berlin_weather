@@ -44,8 +44,12 @@ list(
     command = get_raw_data(city, start_date, today)
   ),
   tar_target(
+    name = validated_raw_data,
+    command = validate_raw_data(raw_data)
+  ),
+  tar_target(
     name = filtered_data,
-    command = filter_data(raw_data)
+    command = filter_data(validated_raw_data)
   ),
   tar_target(
     name = historical_data,

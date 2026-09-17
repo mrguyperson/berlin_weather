@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build test image
+        run: docker build -t berlin-weather-test .
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            --mount type=bind,src="${{ github.workspace }}",dst=/project,readonly \
+            --workdir /project \
+            berlin-weather-test \
+            Rscript -e 'testthat::test_dir("tests/testthat")'
