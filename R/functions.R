@@ -35,6 +35,44 @@ validate_raw_data <- function(raw_data) {
         )
     }
 
+    if (!is.numeric(raw_data$hourly_temperature_2m)) {
+        stop(
+            "Open-Meteo response column `hourly_temperature_2m` must be numeric.",
+            call. = FALSE
+        )
+    }
+
+    non_missing_datetime <- !is.na(raw_data$datetime)
+    parsed_dates <- rep(as.Date(NA), nrow(raw_data))
+
+    if (any(non_missing_datetime)) {
+        parsed_non_missing <- tryCatch(
+            suppressWarnings(
+                lubridate::as_date(raw_data$datetime[non_missing_datetime])
+            ),
+            error = function(e) NULL
+        )
+
+        if (is.null(parsed_non_missing) || any(is.na(parsed_non_missing))) {
+            stop(
+                "Open-Meteo response contains invalid `datetime` values.",
+                call. = FALSE
+            )
+        }
+
+        parsed_dates[non_missing_datetime] <- parsed_non_missing
+    }
+
+    usable_observation <- !is.na(parsed_dates) &
+        !is.na(raw_data$hourly_temperature_2m)
+
+    if (!any(usable_observation)) {
+        stop(
+            "Open-Meteo response contains no usable weather observations.",
+            call. = FALSE
+        )
+    }
+
     raw_data
 }
 
