@@ -15,6 +15,20 @@ get_raw_data <- function(city, start_date, today, hourly = "temperature_2m") {
 
 }
 
+get_current_year_start <- function(today) {
+    lubridate::floor_date(lubridate::as_date(today), unit = "year")
+}
+
+combine_raw_data <- function(
+    validated_historical_raw_data,
+    validated_current_year_raw_data
+) {
+    dplyr::bind_rows(
+        validated_historical_raw_data,
+        validated_current_year_raw_data
+    )
+}
+
 validate_raw_data <- function(raw_data) {
     if (!is.data.frame(raw_data)) {
         stop("Open-Meteo response must be data-frame-like.", call. = FALSE)

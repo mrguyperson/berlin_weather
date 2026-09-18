@@ -101,6 +101,51 @@ test_that("validate_raw_data allows partial missing observations", {
     expect_identical(validate_raw_data(response), response)
 })
 
+test_that("current-year boundaries are contiguous", {
+    midyear <- as.Date("2025-06-15")
+    new_year <- as.Date("2025-01-01")
+
+    expect_equal(get_current_year_start(midyear), as.Date("2025-01-01"))
+    expect_equal(get_current_year_start(new_year), as.Date("2025-01-01"))
+    expect_equal(
+        get_current_year_start(midyear) - days(1),
+        as.Date("2024-12-31")
+    )
+    expect_equal(
+        get_current_year_start(midyear) - days(1) + days(1),
+        get_current_year_start(midyear)
+    )
+})
+
+test_that("validated split data recombine to the original response", {
+    current_year_start <- as.POSIXct("2025-01-01", tz = "UTC")
+    full_response <- data.frame(
+        datetime = seq(
+            as.POSIXct("2024-12-30", tz = "UTC"),
+            as.POSIXct("2025-01-02 23:00:00", tz = "UTC"),
+            by = "hour"
+        ),
+        hourly_temperature_2m = seq_len(96)
+    )
+    historical_response <- full_response %>%
+        filter(datetime < current_year_start)
+    current_year_response <- full_response %>%
+        filter(datetime >= current_year_start)
+
+    recombined <- combine_raw_data(
+        validate_raw_data(historical_response),
+        validate_raw_data(current_year_response)
+    )
+
+    expect_equal(recombined, full_response)
+    expect_identical(names(recombined), names(full_response))
+    expect_identical(class(recombined$datetime), class(full_response$datetime))
+    expect_identical(
+        typeof(recombined$hourly_temperature_2m),
+        typeof(full_response$hourly_temperature_2m)
+    )
+})
+
 test_that("filter_data derives dates from datetimes", {
     response <- data.frame(
         datetime = as.POSIXct(
