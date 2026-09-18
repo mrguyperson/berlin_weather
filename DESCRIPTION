@@ -1,0 +1,37 @@
+Type: Project
+Package: berlinweather
+Title: Berlin Historical Weather Dashboard
+Version: 0.0.0.9000
+Description: A targets pipeline and Quarto dashboard comparing current Berlin
+    weather with historical Open-Meteo observations.
+License: MIT
+Encoding: UTF-8
+Imports:
+    broom,
+    dplyr,
+    ggplot2,
+    glue,
+    gt,
+    httr,
+    leaflet,
+    lubridate,
+    openmeteo,
+    purrr,
+    scales,
+    showtext,
+    stringr,
+    targets,
+    tibble,
+    tidyr,
+    tidygeocoder,
+    tidyverse
+Suggests:
+    httpgd,
+    jsonlite,
+    languageserver,
+    lintr,
+    styler,
+    testthat,
+    vscDebugger
+Additional_repositories:
+    https://manuelhentschel.r-universe.dev

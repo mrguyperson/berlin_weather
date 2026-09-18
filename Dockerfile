@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y -y --no-install-recommends \
     libxml2-dev \
     libfontconfig1-dev \
     libfreetype6-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
     wget \
     ca-certificates \
     git \
@@ -42,42 +44,22 @@ RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
     && rm quarto-linux-amd64.deb
 
 # ------------------------------------------------------------------------------
-# Install R packages using install2.r
-# Faster and more stable than pak in Docker
+# Restore the locked R package environment
 # ------------------------------------------------------------------------------
 
-RUN install2.r --error --skipinstalled \
-    languageserver \
-    lintr \
-    styler \
-    here \
-    tidyverse \
-    igraph \
-    targets \
-    tarchetypes \
-    dplyr \
-    lubridate \
-    jsonlite \
-    httpgd \
-    httr \
-    readxl \
-    openmeteo \
-    bigrquery \
-    gt \
-    leaflet \
-    showtext \
-    tidygeocoder \
-    testthat \
-    quarto
+ENV RENV_PATHS_LIBRARY=/opt/renv/library
 
-RUN Rscript -e 'install.packages("vscDebugger", repos = "https://manuelhentschel.r-universe.dev")'
+WORKDIR /project
+
+COPY renv.lock .Rprofile ./
+COPY renv/activate.R renv/settings.json renv/
+
+RUN Rscript -e 'renv::restore(prompt = FALSE, repos = c(CRAN = Sys.getenv("CRAN"), vscDebugger = "https://manuelhentschel.r-universe.dev"))'
 
 # ------------------------------------------------------------------------------
 # Set working directory
 # (GitHub Actions mounts your repository here)
 # ------------------------------------------------------------------------------
-WORKDIR /project
-
 # ------------------------------------------------------------------------------
 # Default command for interactive runs (overridden in CI)
 # ------------------------------------------------------------------------------
