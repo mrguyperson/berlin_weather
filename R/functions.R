@@ -15,8 +15,23 @@ get_raw_data <- function(
     hourly = "temperature_2m",
     retrieval_function = openmeteo::weather_history,
     retry_rate = purrr::rate_backoff(max_times = 3),
-    timeout_seconds = 60
+    timeout_seconds = 60,
+    log_retrieval = identical(
+        retrieval_function,
+        openmeteo::weather_history
+    )
 ) {
+    if (log_retrieval) {
+        message(
+            sprintf(
+                "Retrieving Open-Meteo data for %s: %s through %s",
+                city,
+                format(as.Date(start_date), "%Y-%m-%d"),
+                format(as.Date(today), "%Y-%m-%d")
+            )
+        )
+    }
+
     last_retrieval_error <- NULL
     retrieve_and_capture_error <- function(...) {
         tryCatch(
