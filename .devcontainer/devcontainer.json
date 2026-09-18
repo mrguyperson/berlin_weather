@@ -1,6 +1,13 @@
 {
   "name": "Weather Dashboard Dev",
   "image": "ghcr.io/mrguyperson/weather-image:latest",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "RENV_PATHS_LIBRARY": "/home/vscode/.local/share/renv/library",
+    "RENV_CONFIG_EXTERNAL_LIBRARIES": "/opt/renv/library-current"
+  },
+  "postCreateCommand": "Rscript -e 'renv::restore(prompt = FALSE, repos = c(CRAN = Sys.getenv(\"CRAN\"), vscDebugger = \"https://manuelhentschel.r-universe.dev\"))'",
 
   "customizations": {
     "vscode": {

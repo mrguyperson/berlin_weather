@@ -48,6 +48,7 @@ RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
 # ------------------------------------------------------------------------------
 
 ENV RENV_PATHS_LIBRARY=/opt/renv/library
+ENV RENV_CONFIG_CACHE_SYMLINKS=FALSE
 
 WORKDIR /project
 
@@ -55,6 +56,13 @@ COPY renv.lock .Rprofile ./
 COPY renv/activate.R renv/settings.json renv/
 
 RUN Rscript -e 'renv::restore(prompt = FALSE, repos = c(CRAN = Sys.getenv("CRAN"), vscDebugger = "https://manuelhentschel.r-universe.dev"))'
+RUN Rscript -e 'stopifnot(file.symlink(renv::paths$library(), "/opt/renv/library-current"))'
+
+# ------------------------------------------------------------------------------
+# Non-root user for VS Code Dev Containers
+# ------------------------------------------------------------------------------
+
+RUN useradd --create-home --shell /bin/bash vscode
 
 # ------------------------------------------------------------------------------
 # Set working directory
