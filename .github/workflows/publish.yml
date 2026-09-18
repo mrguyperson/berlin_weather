@@ -37,8 +37,32 @@ jobs:
       - name: Check out
         uses: actions/checkout@v7
 
+      - name: Determine cache year
+        id: cache-date
+        run: |
+          echo "year=$(Rscript -e 'cat(lubridate::year(lubridate::today()))')" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Restore targets store
+        id: targets-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            _targets/objects
+            _targets/meta/meta
+          key: targets-v1-${{ runner.os }}-${{ steps.cache-date.outputs.year }}-${{ hashFiles('_targets.R', 'R/functions.R', 'Dockerfile') }}
+
       - name: Build targets
-        run: Rscript -e 'targets::tar_make()'
+        run: Rscript -e 'targets::tar_make(reporter = "verbose")'
+
+      - name: Save targets store
+        if: success() && steps.targets-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            _targets/objects
+            _targets/meta/meta
+          key: targets-v1-${{ runner.os }}-${{ steps.cache-date.outputs.year }}-${{ hashFiles('_targets.R', 'R/functions.R', 'Dockerfile') }}
 
       - name: Publish dashboard
         uses: quarto-dev/quarto-actions/publish@v2
