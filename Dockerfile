@@ -3,6 +3,9 @@
 # ------------------------------------------------------------------------------
 FROM rocker/r-ver:4.4.3
 
+ARG QUARTO_VERSION=1.10.18
+ARG QUARTO_SHA256=4bdf5a17df300003beb2f8f0e4dfe568e2ca0ff91318220c8537d2655015c430
+
 # ------------------------------------------------------------------------------
 # System libraries needed for your workflows
 # ------------------------------------------------------------------------------
@@ -39,9 +42,12 @@ RUN apt-get update && apt-get install -y python3-pip python3-venv && \
 # Install Quarto
 # ------------------------------------------------------------------------------
 
-RUN wget -q https://quarto.org/download/latest/quarto-linux-amd64.deb \
-    && dpkg -i quarto-linux-amd64.deb \
-    && rm quarto-linux-amd64.deb
+RUN wget -q \
+        "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb" \
+        -O /tmp/quarto.deb \
+    && echo "${QUARTO_SHA256}  /tmp/quarto.deb" | sha256sum --check --strict \
+    && dpkg -i /tmp/quarto.deb \
+    && rm /tmp/quarto.deb
 
 # ------------------------------------------------------------------------------
 # Restore the locked R package environment

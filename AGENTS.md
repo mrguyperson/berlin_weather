@@ -52,7 +52,7 @@ Do not silently substitute, invent, or repair missing weather observations unles
 
 Do not assume R is installed on the host.
 
-The root `Dockerfile` is the canonical runtime definition for development and CI, but it is not fully version-locked: R packages, Quarto, and the published image tag may change over time.
+The root `Dockerfile` is the canonical runtime definition for development and CI. R packages and Quarto are pinned for a given source revision, but other inputs and the published `latest` image tag may still change over time.
 
 Do not install host-level packages or introduce new project dependencies unless required by the task. Ask before downloading, installing, or substantially changing dependencies when approval is required.
 
