@@ -47,13 +47,13 @@ The environment is described at complementary levels:
 
 - `DESCRIPTION` declares the project's direct R runtime and development dependencies.
 - `renv.lock` records the exact resolved R package versions and the R version used to create the lockfile.
-- The root `Dockerfile` is the canonical runtime and build definition: it starts from R 4.4.3, installs required Linux libraries, Python and radian, installs the latest Quarto available at image-build time, and restores the locked R library.
+- The root `Dockerfile` is the canonical runtime and build definition: it starts from R 4.4.3, installs required Linux libraries, Python and radian, installs Quarto 1.10.18 from a version-specific release asset verified against its pinned SHA-256 checksum, and restores the locked R library.
 - GitHub Actions publishes that image to `ghcr.io/mrguyperson/weather-image`, using both the rolling `latest` tag and commit-SHA tags.
 - `.devcontainer/devcontainer.json` provides an interactive VS Code environment from the same `latest` image.
 
 The Dev Container runs as the non-root `vscode` user. Packages baked into the image live under `/opt/renv/library`; a writable per-user renv library is placed ahead of that canonical library for dependency changes on a branch. Its post-create `renv::restore()` reconciles the checked-out lockfile with the image, installing branch-specific differences into the writable layer without modifying the image library.
 
-The R packages are version-locked, but the overall image is not perfectly immutable: the Dockerfile downloads the latest Quarto release when it builds, and `latest` is intentionally a moving image tag. Use a published `sha-<commit>` image tag when source-to-image traceability matters.
+The R packages and Quarto are version-locked, but the overall image is not perfectly immutable: other upstream image and system-package inputs may still change over time, and `latest` is intentionally a moving image tag. Use a published `sha-<commit>` image tag when source-to-image traceability matters.
 
 ## Running the project
 
