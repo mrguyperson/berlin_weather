@@ -3,6 +3,80 @@ library(tidyverse)
 
 source(testthat::test_path("..", "..", "R", "functions.R"))
 
+test_that("get_raw_data succeeds on its third retrieval attempt", {
+    attempts <- 0
+    response <- data.frame(
+        datetime = "2025-01-01 00:00:00",
+        hourly_temperature_2m = 12
+    )
+    retriever <- function(...) {
+        attempts <<- attempts + 1
+
+        if (attempts < 3) {
+            stop("temporary retrieval failure")
+        }
+
+        response
+    }
+
+    result <- get_raw_data(
+        "Berlin",
+        as.Date("2025-01-01"),
+        as.Date("2025-01-02"),
+        retrieval_function = retriever,
+        retry_rate = purrr::rate_delay(pause = 0, max_times = 3)
+    )
+
+    expect_identical(result, response)
+    expect_equal(attempts, 3)
+})
+
+test_that("get_raw_data stops after three failed retrieval attempts", {
+    attempts <- 0
+    retriever <- function(...) {
+        attempts <<- attempts + 1
+        stop("persistent retrieval failure")
+    }
+
+    expect_error(
+        get_raw_data(
+            "Berlin",
+            as.Date("2025-01-01"),
+            as.Date("2025-01-02"),
+            retrieval_function = retriever,
+            retry_rate = purrr::rate_delay(pause = 0, max_times = 3)
+        ),
+        "persistent retrieval failure",
+        fixed = TRUE
+    )
+    expect_equal(attempts, 3)
+})
+
+test_that("get_raw_data does not retry downstream validation failures", {
+    attempts <- 0
+    invalid_response <- data.frame(datetime = "2025-01-01 00:00:00")
+    retriever <- function(...) {
+        attempts <<- attempts + 1
+        invalid_response
+    }
+
+    result <- get_raw_data(
+        "Berlin",
+        as.Date("2025-01-01"),
+        as.Date("2025-01-02"),
+        retrieval_function = retriever,
+        retry_rate = purrr::rate_delay(pause = 0, max_times = 3)
+    )
+
+    expect_equal(attempts, 1)
+    expect_error(
+        validate_raw_data(result),
+        "Open-Meteo response is missing required columns: hourly_temperature_2m",
+        fixed = TRUE
+    )
+    expect_equal(attempts, 1)
+})
+
 test_that("validate_raw_data returns valid input unchanged", {
     response <- data.frame(
         datetime = "2025-01-01 00:00:00",
