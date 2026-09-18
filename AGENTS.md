@@ -19,7 +19,7 @@ The project is primarily written in R and uses:
 * `_targets.R` defines the analysis pipeline.
 * `index.qmd` contains the main Quarto dashboard.
 * `Dockerfile` defines the canonical project runtime environment.
-* `.devcontainer/devcontainer.json` uses the image built from the root `Dockerfile`; `.devcontainer/Dockerfile` and `.devcontainer/setup.R` are not part of the active configuration.
+* `.devcontainer/devcontainer.json` uses the image built from the root `Dockerfile`.
 * `tests/testthat/` contains automated tests.
 * `.github/workflows/` contains CI/CD workflows.
 * `_targets/` contains generated `{targets}` state and should not be edited directly.
@@ -99,6 +99,14 @@ The automated test workflow should test pull requests and `main`.
 The production `weather-image:latest` image must only be published from `main`. Preserve both the `push.branches` filter and the job-level `github.ref` guard in the image-build workflow unless explicitly requested otherwise.
 
 Use minimal GitHub Actions permissions appropriate to the task.
+
+## Documentation maintenance
+
+When changing architecture, workflows, dependency management, Dev Container behavior, pipeline structure, or user-facing commands, review both `README.md` and `AGENTS.md`. Update documentation in the same change whenever its description becomes inaccurate.
+
+Pay particular attention when modifying `Dockerfile`, `DESCRIPTION`, `renv.lock`, `renv/**`, `.devcontainer/**`, `.github/workflows/**`, `_targets.R`, or `R/functions.R`. Deleting or renaming a documented file must update references to it.
+
+If these files change but the documentation remains accurate, explicitly report that both documents were reviewed and no update was necessary. Documentation updates needed to prevent false guidance are an exception to otherwise narrow implementation scopes.
 
 ## Verification before completion
 
