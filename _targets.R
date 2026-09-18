@@ -40,8 +40,35 @@ list(
     cue = tar_cue(mode = "always")
   ),
   tar_target(
+    name = current_year_start,
+    command = get_current_year_start(today)
+  ),
+  tar_target(
+    name = historical_end_date,
+    command = current_year_start - lubridate::days(1)
+  ),
+  tar_target(
+    name = historical_raw_data,
+    command = get_raw_data(city, start_date, historical_end_date)
+  ),
+  tar_target(
+    name = validated_historical_raw_data,
+    command = validate_raw_data(historical_raw_data)
+  ),
+  tar_target(
+    name = current_year_raw_data,
+    command = get_raw_data(city, current_year_start, today)
+  ),
+  tar_target(
+    name = validated_current_year_raw_data,
+    command = validate_raw_data(current_year_raw_data)
+  ),
+  tar_target(
     name = raw_data,
-    command = get_raw_data(city, start_date, today)
+    command = combine_raw_data(
+      validated_historical_raw_data,
+      validated_current_year_raw_data
+    )
   ),
   tar_target(
     name = validated_raw_data,
