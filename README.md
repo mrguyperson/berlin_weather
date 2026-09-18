@@ -1,188 +1,113 @@
 # Berlin Weather
 
-A reproducible R data pipeline and Quarto dashboard that compares current weather in Berlin with its historical context.
+Berlin Weather is an automated R and Quarto dashboard that compares recent weather in Berlin with observations from a historical record beginning in 1940. Its central idea is simple: a temperature is more meaningful when placed in seasonal and historical context. A 20 °C day may be routine in July and exceptional in February.
 
-The dashboard answers a simple question:
+**[View the live dashboard](https://mrguyperson.quarto.pub/berlin_weather)**
 
-> **How unusual is today’s weather in Berlin compared with the same time of year over the historical record?**
-
-Rather than showing only a conventional forecast, the project retrieves hourly weather observations, builds historical distributions, and presents current conditions alongside long-term patterns.
+The dashboard shows the current year's daily temperature ranges against long-term daily distributions, identifies new heat and cold records, lists extreme observed temperatures, and summarizes the hottest year, coldest year, and long-run annual temperature trend. Leap days are excluded so calendar days align consistently across years.
 
 ## Why this project exists
 
-Daily weather reports are good at telling us what the temperature is, but not necessarily what that temperature means.
+Most weather products answer “what is it now?” or “what happens next?” They do not necessarily explain whether a measurement is ordinary for this point in the year. This dashboard adds that context by comparing Berlin's recent conditions with more than eight decades of hourly observations.
 
-A 20 °C day can be ordinary in July and remarkable in February. This project provides that context by comparing recent Berlin weather with historical observations dating back to 1940.
-
-The project also serves as a practical example of a reproducible analytical workflow. It is designed so that data retrieval, validation, transformation, testing, visualization, and publication are automated and can be recreated from a clean environment.
+The repository also demonstrates the engineering around a reproducible scientific-data product. Data ingestion, boundary validation, transformation, testing, dependency-aware caching, environment construction, rendering, and publication are defined in code and automated. The result is both a useful dashboard and an inspectable example of how to make a recurring analysis reliable without hiding its assumptions.
 
 ## How it works
-
-The project uses an R `{targets}` pipeline to coordinate the full workflow:
 
 ```text
 Open-Meteo
     ↓
-retrieve weather data
+retrieval + validation
     ↓
-validate API responses
+{targets} pipeline
     ↓
-clean and filter observations
+historical context + summaries
     ↓
-build historical weather summaries
+Quarto dashboard
     ↓
-compare current weather with history
-    ↓
-render Quarto dashboard
-    ↓
-publish automatically
+automated publication
 ```
 
-### Data retrieval
+Open-Meteo supplies hourly `temperature_2m` observations. The pipeline retrieves the long-lived and frequently changing parts separately:
 
-Weather observations come from the [Open-Meteo](https://open-meteo.com/) historical weather API.
+- the historical branch covers 1 January 1940 through 31 December of the previous year;
+- the current-year branch covers 1 January of the current year through today.
 
-The pipeline is split into two ingestion branches:
+Each response passes through `validate_raw_data()` before the datasets are combined. The boundary checks that a response is data-frame-like and non-empty, contains the expected datetime and temperature columns, has numeric temperatures and parseable non-missing datetimes, and includes at least one usable observation. It does not require every row to be complete: partially missing observations may pass the boundary check and are removed during filtering. Malformed responses fail explicitly rather than being repaired or replaced with invented values.
 
-```text
-Historical baseline
-1940-01-01 → December 31 of the previous year
+Retrieval uses a 60-second HTTP timeout and bounded exponential backoff, with at most three attempts by default. Only errors raised while retrieving are retried; a successfully retrieved but invalid response reaches validation and fails without another network request.
 
-Current year
-January 1 → today
+After ingestion, the pipeline removes incomplete rows and leap-day observations, calculates historical distributions for each calendar day, and derives the current-year ranges, records, extremes, and annual trend used by the dashboard. The most recent date is omitted from the current-year display if it does not contain 24 hourly rows.
+
+[`{targets}`](https://docs.ropensci.org/targets/) declares the dependencies between these steps, persists intermediate results, and rebuilds only targets whose inputs have changed. The daily GitHub Actions workflow restores target objects and metadata from a year- and source-sensitive cache. This allows the stable historical branch to be reused when its inputs are unchanged while the always-cued date and dependent current-year results update. Quarto then reads the completed targets store and renders the dashboard for publication to Quarto Pub.
+
+## Reproducible environment
+
+The environment is described at complementary levels:
+
+- `DESCRIPTION` declares the project's direct R runtime and development dependencies.
+- `renv.lock` records the exact resolved R package versions and the R version used to create the lockfile.
+- The root `Dockerfile` is the canonical runtime and build definition: it starts from R 4.4.3, installs required Linux libraries, Python and radian, installs the latest Quarto available at image-build time, and restores the locked R library.
+- GitHub Actions publishes that image to `ghcr.io/mrguyperson/weather-image`, using both the rolling `latest` tag and commit-SHA tags.
+- `.devcontainer/devcontainer.json` provides an interactive VS Code environment from the same `latest` image.
+
+The Dev Container runs as the non-root `vscode` user. Packages baked into the image live under `/opt/renv/library`; a writable per-user renv library is placed ahead of that canonical library for dependency changes on a branch. Its post-create `renv::restore()` reconciles the checked-out lockfile with the image, installing branch-specific differences into the writable layer without modifying the image library.
+
+The R packages are version-locked, but the overall image is not perfectly immutable: the Dockerfile downloads the latest Quarto release when it builds, and `latest` is intentionally a moving image tag. Use a published `sha-<commit>` image tag when source-to-image traceability matters.
+
+## Running the project
+
+Pipeline and render operations need network access on a clean checkout. In addition to Open-Meteo, the pipeline geocodes Berlin through OpenStreetMap/Nominatim, and rendering may retrieve the Libre Franklin font from Google Fonts.
+
+### VS Code Dev Container
+
+The Dev Container is the easiest way to reproduce the full interactive environment. Open the repository in VS Code with the Dev Containers extension, choose **Reopen in Container**, and then run:
+
+```bash
+Rscript -e 'targets::tar_make()'
+quarto render index.qmd
 ```
 
-The stable historical portion can therefore be reused rather than downloading the entire multi-decade dataset every day.
+The first command builds or updates the pipeline; the second renders the dashboard using its stored outputs.
 
-Each API response is validated independently before the datasets are combined. Validation checks include required columns, usable timestamps, numeric temperature data, and the presence of valid observations.
+### Docker
 
-Transient retrieval failures are retried with bounded backoff, while malformed data fails validation rather than being silently repaired.
+Build the canonical image locally and mount the checkout at its configured working directory:
 
-### Data processing
+```bash
+docker build -t berlin-weather .
 
-The project uses `{targets}` to describe dependencies between analytical steps.
-
-This provides:
-
-* automatic dependency tracking;
-* incremental rebuilding when inputs change;
-* persistent intermediate results;
-* reproducible execution order; and
-* visibility into which parts of the analysis need to rerun.
-
-Daily publication normally requires retrieving only the current year's observations. Historical targets can be restored from the GitHub Actions cache and skipped when unchanged.
-
-### Dashboard
-
-The final dashboard is written in [Quarto](https://quarto.org/) and generated from the processed `{targets}` outputs.
-
-It presents current Berlin weather in the context of the historical record rather than as isolated measurements.
-
-## Reproducibility
-
-The project supports two reproducibility paths.
-
-### Docker / Dev Container
-
-The canonical environment is defined by the root `Dockerfile`.
-
-It includes:
-
-* R 4.4.3;
-* Quarto;
-* required Linux system libraries;
-* Python and radian; and
-* the exact R dependency set restored from `renv.lock`.
-
-The same container environment is used for automated workflows and interactive development.
-
-The container image is published to GitHub Container Registry:
-
-```text
-ghcr.io/mrguyperson/weather-image
+docker run --rm -it \
+  --mount type=bind,src="$PWD",dst=/project \
+  --workdir /project \
+  berlin-weather
 ```
 
-The rolling development image is tagged:
+Inside the container, run the same pipeline and render commands shown above. This is a direct way to run the canonical environment, but the image defaults to the root user and may therefore create root-owned files in a Linux host bind mount. For interactive development, the VS Code Dev Container is recommended because it runs as the non-root `vscode` user. The bind mount remains writable because `{targets}` must create or update `_targets/` and Quarto must write rendered output.
 
-```text
-latest
+### Native R
+
+With R 4.4.x and renv available, restore the package library from the repository root:
+
+```bash
+Rscript -e 'renv::restore()'
+Rscript -e 'targets::tar_make()'
+quarto render index.qmd
 ```
 
-Builds are also tagged with their Git commit SHA so a specific source revision can be associated with a specific environment image.
-
-### Native R with renv
-
-Users who do not want to use Docker can recreate the R package environment with [`renv`](https://rstudio.github.io/renv/).
-
-With R 4.4.x installed:
-
-```r
-renv::restore()
-```
-
-`renv.lock` records the exact R package versions used by the project, while `DESCRIPTION` declares the project's direct runtime and development dependencies.
-
-A native installation still requires compatible system libraries and Quarto to be installed separately; the Docker image provides the more complete environment definition.
-
-## Development environment
-
-VS Code development uses a Dev Container built from the same canonical image used elsewhere in the project.
-
-The image contains an immutable R package library representing the committed `renv.lock`.
-
-Interactive development runs as a non-root `vscode` user so files created in the workspace remain owned by the host user rather than by root.
-
-Branch-specific package changes can use a writable development library layered in front of the canonical image library:
-
-```text
-Writable development library
-        ↓
-packages changed on the current branch
-
-Canonical /opt/renv/library
-        ↓
-packages already provided by the image
-```
-
-This makes it possible to experiment with dependency changes without modifying the canonical environment inside the running container.
-
-A typical dependency update is:
-
-1. Add the direct dependency to `DESCRIPTION`.
-2. Install it with `renv::install()`.
-3. Test the change.
-4. Run `renv::snapshot()`.
-5. Commit `DESCRIPTION` and `renv.lock`.
-6. Merge the change.
-7. Let GitHub Actions rebuild the canonical image from the new lockfile.
+`renv::restore()` recreates the R dependency environment; it does not install Quarto or the system libraries required by packages with compiled dependencies. Those must be supplied separately, which is why the container is the more complete reproduction path.
 
 ## Testing
 
-Unit and regression tests use `{testthat}`.
+The `{testthat}` suite covers the external-data contract and important transformation and regression behavior: response shape and types, malformed timestamps, partial missingness, split-date boundaries and recombination, filtering, leap-day handling, incomplete final dates, retrieval logging, and bounded retries.
 
-The test suite covers behavior including:
+Retrieval tests inject local test functions into `get_raw_data()`. This exercises success and failure paths deterministically without deliberately failing real network calls, so the unit suite remains offline.
 
-* Open-Meteo response validation;
-* malformed timestamps and invalid temperature data;
-* handling of partially missing observations;
-* historical/current-year boundary calculations;
-* recombination of independently retrieved datasets;
-* weather filtering behavior;
-* order-independent removal of incomplete final dates;
-* retry behavior for transient retrieval failures; and
-* retrieval observability.
-
-Tests are offline and deterministic: they use injected fake retrieval functions rather than deliberately making failing network requests.
-
-Run the full suite with:
-
-```r
-testthat::test_dir("tests/testthat")
-```
-
-or in the canonical container:
+Run the suite in the canonical environment:
 
 ```bash
+docker build -t berlin-weather-test .
+
 docker run --rm \
   --mount type=bind,src="$PWD",dst=/project,readonly \
   --workdir /project \
@@ -190,113 +115,50 @@ docker run --rm \
   Rscript -e 'testthat::test_dir("tests/testthat")'
 ```
 
-## Continuous integration and publication
+If the locked R environment is already active, the direct equivalent is:
 
-GitHub Actions handles several distinct jobs.
-
-### Tests
-
-Pull requests build the proposed root `Dockerfile` and run the complete test suite.
-
-This is deliberate: a pull request that changes the environment should test the proposed environment rather than the previously published container image.
-
-Docker layer caching reduces repeated installation work between CI runs.
-
-### Environment image
-
-Changes to environment-defining files trigger a rebuild of the canonical container image, including changes to:
-
-```text
-Dockerfile
-renv.lock
-.Rprofile
-renv/activate.R
-renv/settings.json
+```bash
+Rscript -e 'testthat::test_dir("tests/testthat")'
 ```
 
-The resulting image is published to GitHub Container Registry.
+## Automation and publication
 
-### Daily dashboard update
+The workflows under `.github/workflows/` keep distinct responsibilities:
 
-The publication workflow restores the `{targets}` state when available, retrieves current weather data, rebuilds affected analytical targets, and publishes the updated Quarto dashboard.
-
-The cache is intentionally structured so that stable historical weather data can be reused while current-year observations continue to update.
+- **Tests:** pull requests and pushes to `main` build the proposed Dockerfile, check documentation paths, and run the offline test suite inside that image.
+- **Canonical image:** pushes to `main` that change environment-defining inputs build and publish `latest` and commit-SHA images to GitHub Container Registry. Publication is protected by both the branch trigger and a job-level `github.ref` guard.
+- **Dashboard publication:** pushes to `main`, a daily schedule, manual runs, and successful image builds run the pipeline in the published container and publish the Quarto dashboard.
+- **Historical-state reuse:** the publication workflow caches selected `{targets}` objects and metadata using the calendar year plus hashes of pipeline, function, and Docker inputs, avoiding unnecessary retrieval and recomputation when that state remains valid.
+- **Documentation integrity:** the test workflow runs `scripts/check_doc_paths.py` to catch stale repository-path references in `README.md` and `AGENTS.md`.
 
 ## Repository structure
 
 ```text
 .
-├── R/
-│   └── functions.R          # Retrieval, validation and analysis functions
-├── tests/
-│   └── testthat/            # Unit and regression tests
-├── .github/
-│   └── workflows/           # CI, image build and publication automation
+├── R/                       # Retrieval, validation, transformation, and analysis
+├── tests/                   # Offline unit and regression tests
+├── .github/workflows/       # Test, image-build, and publication automation
 ├── .devcontainer/           # VS Code Dev Container configuration
-├── _targets.R               # targets pipeline definition
-├── index.qmd                # Quarto dashboard
-├── Dockerfile               # Canonical runtime environment
+├── scripts/                 # Repository maintenance checks
+├── _targets.R               # Pipeline definition
+├── index.qmd                # Quarto dashboard source
+├── Dockerfile               # Canonical runtime/build environment
 ├── DESCRIPTION              # Direct R dependencies
-├── renv.lock                # Exact R dependency versions
+├── renv.lock                # Exact R dependency resolution
 └── AGENTS.md                # Repository guidance for coding agents
 ```
 
-Generated `{targets}` state is not edited manually.
-
-## Running the project
-
-With the required environment available, run the pipeline with:
-
-```r
-targets::tar_make()
-```
-
-Render the dashboard with:
-
-```bash
-quarto render index.qmd
-```
-
-A completely clean pipeline run requires network access because the project retrieves external data from services including Open-Meteo and geocoding services.
+Generated state under `_targets/` is managed by `{targets}` and should not be edited directly.
 
 ## Design principles
 
-Several choices in this project are intentional.
-
-**Validate external data at the boundary.**
-Unexpected API responses should fail clearly before entering the analytical pipeline.
-
-**Retry infrastructure failures, not bad data.**
-Transient network failures can be retried. A successfully retrieved but invalid response should fail validation.
-
-**Prefer deterministic automation to agentic automation.**
-Daily work is handled by `{targets}`, Docker, and GitHub Actions. Coding agents are used for development, investigation, testing, and maintenance rather than as part of the production data pipeline.
-
-**Keep the analytical environment explicit.**
-`DESCRIPTION` declares direct dependencies, `renv.lock` fixes package versions, and Docker defines the surrounding system environment.
-
-**Test bugs before fixing them.**
-Regression tests reproduce identified failures before production code is changed, so fixed behavior remains protected.
-
-**Avoid unnecessary recomputation.**
-Stable historical data, Docker layers, and target metadata are cached where doing so does not compromise correctness.
+- **Validate external data at the boundary.** Open-Meteo responses must satisfy a small, explicit internal contract before transformation.
+- **Retry retrieval failures, not invalid data.** Network-facing failures receive bounded retries; malformed successful responses fail at validation.
+- **Use deterministic production automation.** `{targets}`, Docker, Quarto, and GitHub Actions define the recurring workflow end to end.
+- **Keep dependencies and environments explicit.** Direct dependencies, resolved versions, and system requirements are represented by separate, reviewable files.
+- **Protect behavior with regression tests.** Tests capture failures and edge cases so later changes can preserve intended behavior.
+- **Avoid unnecessary recomputation.** Dependency tracking, persisted target state, and CI caches reuse stable work while allowing current observations to refresh.
 
 ## Technology
 
-The project primarily uses:
-
-* R
-* `{targets}`
-* `{tidyverse}`
-* `{openmeteo}`
-* `{testthat}`
-* `{renv}`
-* Quarto
-* Docker
-* VS Code Dev Containers
-* GitHub Actions
-* GitHub Container Registry
-
-## Status
-
-This is an actively maintained personal project. In addition to the dashboard itself, it is used to explore reproducible scientific computing, data-pipeline reliability, automated testing, and containerized development workflows.
+R · `{targets}` · `{tidyverse}` · Open-Meteo · `{testthat}` · `{renv}` · Quarto · Docker · VS Code Dev Containers · GitHub Actions · GitHub Container Registry
