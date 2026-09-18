@@ -62,7 +62,14 @@ index_files/*
 # renv
 renv/library/
 renv/staging/
+renv/cache/
+renv/cellar/
+renv/local/
+renv/lock/
+renv/python/
+renv/sandbox/
 
 # Ignore secrets
 *.json
+!renv/settings.json
 keys/
