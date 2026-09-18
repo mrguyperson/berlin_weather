@@ -3,6 +3,38 @@ library(tidyverse)
 
 source(testthat::test_path("..", "..", "R", "functions.R"))
 
+test_that("get_raw_data can log an injected retrieval", {
+    retriever <- function(...) data.frame(value = 1)
+
+    expect_message(
+        get_raw_data(
+            "Berlin",
+            as.Date("2026-01-01"),
+            as.Date("2026-09-19"),
+            retrieval_function = retriever,
+            log_retrieval = TRUE
+        ),
+        paste0(
+            "Retrieving Open-Meteo data for Berlin: ",
+            "2026-01-01 through 2026-09-19"
+        ),
+        fixed = TRUE
+    )
+})
+
+test_that("get_raw_data keeps injected retrievals quiet by default", {
+    retriever <- function(...) data.frame(value = 1)
+
+    expect_no_message(
+        get_raw_data(
+            "Berlin",
+            as.Date("2026-01-01"),
+            as.Date("2026-09-19"),
+            retrieval_function = retriever
+        )
+    )
+})
+
 test_that("get_raw_data succeeds on its third retrieval attempt", {
     attempts <- 0
     response <- data.frame(
