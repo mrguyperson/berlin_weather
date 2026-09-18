@@ -8,11 +8,50 @@ get_city_coords <- function(city) {
         )
 }
 
-get_raw_data <- function(city, start_date, today, hourly = "temperature_2m") {
+get_raw_data <- function(
+    city,
+    start_date,
+    today,
+    hourly = "temperature_2m",
+    retrieval_function = openmeteo::weather_history,
+    retry_rate = purrr::rate_backoff(max_times = 3),
+    timeout_seconds = 60
+) {
+    last_retrieval_error <- NULL
+    retrieve_and_capture_error <- function(...) {
+        tryCatch(
+            retrieval_function(...),
+            error = function(error) {
+                last_retrieval_error <<- error
+                stop(error)
+            }
+        )
+    }
 
-    weather_history(city, start = start_date, end = today, hourly)
+    retrieve_with_retry <- purrr::insistently(
+        retrieve_and_capture_error,
+        rate = retry_rate,
+        quiet = FALSE
+    )
 
+    tryCatch(
+        httr::with_config(
+            httr::timeout(timeout_seconds),
+            retrieve_with_retry(
+                city,
+                start = start_date,
+                end = today,
+                hourly
+            )
+        ),
+        purrr_error_rate_excess = function(error) {
+            if (!is.null(last_retrieval_error)) {
+                stop(last_retrieval_error)
+            }
 
+            stop(error)
+        }
+    )
 }
 
 get_current_year_start <- function(today) {
