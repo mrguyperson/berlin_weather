@@ -196,12 +196,12 @@ make_calendar <- function(today) {
 
 }
 
-remove_incomplete_date <- function(filtered_data) {
+remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%
         max()
 
-    timezone <- lubridate::tz(filtered_data$datetime)
+    timezone <- "Europe/Berlin"
     day_start <- as.POSIXct(
         paste(last_date, "00:00:00"),
         tz = timezone
@@ -217,7 +217,9 @@ remove_incomplete_date <- function(filtered_data) {
     num_rows <- filtered_data %>%
         filter(date == last_date) %>%
         nrow()
-    if(num_rows != expected_rows) {
+    day_has_ended <- reference_time >= next_day_start
+
+    if(!day_has_ended || num_rows != expected_rows) {
         filtered_data %>%
             filter(date != last_date)
     } else {
@@ -225,9 +227,9 @@ remove_incomplete_date <- function(filtered_data) {
     }
 }
 
-get_this_year <- function(filtered_data) {
+get_this_year <- function(filtered_data, reference_time) {
 
-    data_w_date_check <- remove_incomplete_date(filtered_data)
+    data_w_date_check <- remove_incomplete_date(filtered_data, reference_time)
 
     data_w_date_check %>%
         filter(

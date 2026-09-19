@@ -35,9 +35,13 @@ list(
     command = "1940-01-01"
   ),
   tar_target(
-    name = today,
-    command = lubridate::today(),
+    name = reference_time,
+    command = lubridate::now(tzone = "Europe/Berlin"),
     cue = tar_cue(mode = "always")
+  ),
+  tar_target(
+    name = today,
+    command = lubridate::as_date(reference_time, tz = "Europe/Berlin")
   ),
   tar_target(
     name = current_year_start,
@@ -88,7 +92,7 @@ list(
   ),
   tar_target(
     name = this_year,
-    command = get_this_year(filtered_data)
+    command = get_this_year(filtered_data, reference_time)
   ),
   tar_target(
     name = history_with_calendar,
