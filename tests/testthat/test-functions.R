@@ -325,33 +325,68 @@ make_local_hourly_day <- function(date, timezone = "Europe/Berlin") {
 test_that("remove_incomplete_date removes an incomplete ordinary final day", {
     complete_day <- make_local_hourly_day("2025-01-01")
     partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
+    reference_time <- as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
 
-    result <- remove_incomplete_date(bind_rows(complete_day, partial_day))
+    result <- remove_incomplete_date(
+        bind_rows(complete_day, partial_day),
+        reference_time
+    )
 
     expect_equal(result, complete_day)
 })
 
-test_that("remove_incomplete_date retains a complete ordinary final day", {
+test_that("remove_incomplete_date removes a structurally complete current day", {
     first_day <- make_local_hourly_day("2025-01-01")
     final_day <- make_local_hourly_day("2025-01-02")
     response <- bind_rows(first_day, final_day)
+    reference_time <- as.POSIXct("2025-01-02 12:00:00", tz = "Europe/Berlin")
 
-    expect_equal(remove_incomplete_date(response), response)
+    expect_equal(remove_incomplete_date(response, reference_time), first_day)
 })
 
-test_that("remove_incomplete_date retains a complete spring DST day", {
+test_that("remove_incomplete_date removes a structurally complete current spring DST day", {
     spring_day <- make_local_hourly_day("2025-03-30")
+    reference_time <- as.POSIXct("2025-03-30 12:00:00", tz = "Europe/Berlin")
 
     expect_equal(nrow(spring_day), 23)
-    expect_equal(remove_incomplete_date(spring_day), spring_day)
+    expect_equal(remove_incomplete_date(spring_day, reference_time), spring_day[0, ])
 })
 
-test_that("remove_incomplete_date retains a complete autumn DST day", {
+test_that("remove_incomplete_date removes a structurally complete current autumn DST day", {
     autumn_day <- make_local_hourly_day("2025-10-26")
+    reference_time <- as.POSIXct("2025-10-26 12:00:00", tz = "Europe/Berlin")
 
     expect_equal(nrow(autumn_day), 25)
     expect_equal(sum(duplicated(autumn_day$datetime)), 1)
-    expect_equal(remove_incomplete_date(autumn_day), autumn_day)
+    expect_equal(remove_incomplete_date(autumn_day, reference_time), autumn_day[0, ])
+})
+
+test_that("remove_incomplete_date retains complete days after local midnight", {
+    ordinary_day <- make_local_hourly_day("2025-01-02")
+    spring_day <- make_local_hourly_day("2025-03-30")
+    autumn_day <- make_local_hourly_day("2025-10-26")
+
+    expect_equal(
+        remove_incomplete_date(
+            ordinary_day,
+            as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
+        ),
+        ordinary_day
+    )
+    expect_equal(
+        remove_incomplete_date(
+            spring_day,
+            as.POSIXct("2025-03-31 00:00:00", tz = "Europe/Berlin")
+        ),
+        spring_day
+    )
+    expect_equal(
+        remove_incomplete_date(
+            autumn_day,
+            as.POSIXct("2025-10-27 00:00:00", tz = "Europe/Berlin")
+        ),
+        autumn_day
+    )
 })
 
 test_that("remove_incomplete_date only removes the incomplete final date", {
@@ -359,7 +394,8 @@ test_that("remove_incomplete_date only removes the incomplete final date", {
     partial_final_day <- head(make_local_hourly_day("2025-03-31"), 5)
 
     result <- remove_incomplete_date(
-        bind_rows(earlier_day, partial_final_day)
+        bind_rows(earlier_day, partial_final_day),
+        as.POSIXct("2025-04-01 00:00:00", tz = "Europe/Berlin")
     )
 
     expect_equal(result, earlier_day)
@@ -370,9 +406,10 @@ test_that("remove_incomplete_date is independent of row order", {
     partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
     ordered <- bind_rows(complete_day, partial_day)
     unsorted <- bind_rows(ordered[-1, ], ordered[1, ])
+    reference_time <- as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
 
-    ordered_result <- remove_incomplete_date(ordered)
-    unsorted_result <- remove_incomplete_date(unsorted)
+    ordered_result <- remove_incomplete_date(ordered, reference_time)
+    unsorted_result <- remove_incomplete_date(unsorted, reference_time)
 
     expect_equal(
         arrange(unsorted_result, date, datetime),
