@@ -196,30 +196,44 @@ make_calendar <- function(today) {
 
 }
 
+expected_openmeteo_hour_labels <- function(date) {
+    timezone <- "Europe/Berlin"
+    # Mirror the 24-position 00:00--23:00 wall-clock grid currently returned
+    # by openmeteo::weather_history(), even on DST-transition dates. Parsing
+    # spring's nonexistent 02:00 in Europe/Berlin normalizes it to a duplicate
+    # 03:00.
+    wall_clock_hours <- as.POSIXct(
+        sprintf("%s %02d:00:00", date, 0:23),
+        format = "%Y-%m-%d %H:%M:%S",
+        tz = timezone
+    )
+
+    sort(
+        format(wall_clock_hours, "%Y-%m-%d %H:%M:%S", tz = timezone)
+    )
+}
+
 remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%
         max()
 
     timezone <- "Europe/Berlin"
-    day_start <- as.POSIXct(
-        paste(last_date, "00:00:00"),
-        tz = timezone
-    )
     next_day_start <- as.POSIXct(
         paste(last_date + lubridate::days(1), "00:00:00"),
         tz = timezone
     )
-    expected_rows <- as.numeric(
-        difftime(next_day_start, day_start, units = "hours")
-    )
 
-    num_rows <- filtered_data %>%
+    observed_hours <- filtered_data %>%
         filter(date == last_date) %>%
-        nrow()
+        pull(datetime) %>%
+        format("%Y-%m-%d %H:%M:%S", tz = timezone) %>%
+        sort()
+    expected_hours <- expected_openmeteo_hour_labels(last_date)
+    has_expected_hours <- identical(observed_hours, expected_hours)
     day_has_ended <- reference_time >= next_day_start
 
-    if(!day_has_ended || num_rows != expected_rows) {
+    if(!day_has_ended || !has_expected_hours) {
         filtered_data %>%
             filter(date != last_date)
     } else {
