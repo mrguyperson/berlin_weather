@@ -126,8 +126,8 @@ Rscript -e 'testthat::test_dir("tests/testthat")'
 The workflows under `.github/workflows/` keep distinct responsibilities:
 
 - **Tests:** pull requests and pushes to `main` build the proposed Dockerfile, check documentation paths, and run the offline test suite inside that image.
-- **Canonical image:** pushes to `main` that change environment-defining inputs build and publish `latest` and commit-SHA images to GitHub Container Registry. Publication is protected by both the branch trigger and a job-level `github.ref` guard.
-- **Dashboard publication:** pushes to `main`, a daily schedule, manual runs, and successful image builds run the pipeline in the published container and publish the Quarto dashboard.
+- **Canonical image:** the image workflow prepares current `main` revisions with commit-specific `sha-<commit>` images, using Buildx caching to reuse unchanged environment layers. A build for a superseded revision may be canceled; `latest` remains a moving convenience tag.
+- **Dashboard publication:** every dashboard revision that is published runs in its matching `sha-<commit>` image, never `latest`. Publication begins only after image preparation succeeds, and freshness checks prevent a superseded revision from being deployed.
 - **Historical-state reuse:** the publication workflow caches selected `{targets}` objects and metadata using the calendar year plus hashes of pipeline, function, and Docker inputs, avoiding unnecessary retrieval and recomputation when that state remains valid.
 - **Documentation integrity:** the test workflow runs `scripts/check_doc_paths.py` to catch stale repository-path references in `README.md` and `AGENTS.md`.
 

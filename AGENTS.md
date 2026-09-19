@@ -96,7 +96,9 @@ Keep CI and production publishing concerns separate.
 
 The automated test workflow should test pull requests and `main`.
 
-The production `weather-image:latest` image must only be published from `main`. Preserve both the `push.branches` filter and the job-level `github.ref` guard in the image-build workflow unless explicitly requested otherwise.
+The image workflow prepares current `main` revisions with commit-specific canonical images and the moving `weather-image:latest` convenience tag. Preserve the `push.branches` filter and the job-level `github.ref` guard so manual dispatch from a non-main ref cannot update canonical images. An in-progress build for a superseded `main` revision may be canceled.
+
+Every production dashboard revision that is published must use the canonical `sha-<commit>` image matching the explicitly checked-out source revision; do not use `weather-image:latest` for publication correctness.
 
 Use minimal GitHub Actions permissions appropriate to the task.
 
