@@ -1,41 +1,134 @@
 name: Update Weather and Publish
 
 on:
-  push:
-    branches: ["main"]
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
   workflow_run:
     workflows: ["Build Weather Image"]
     types: [completed]
+    branches: ["main"]
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
-  publish:
-    # Allows:
-    # 1. normal push
-    # 2. scheduled runs
-    # 3. manual runs
-    # 4. "Build Weather Image" completed successfully
+  resolve:
     if: >
-      github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success')
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.source.outputs.source_sha }}
+      image: ${{ steps.source.outputs.image }}
+      should_publish: ${{ steps.image.outputs.should_publish }}
+
+    steps:
+      - name: Require main for manual publication
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Manual publication must be dispatched from main."
+          exit 1
+
+      - name: Resolve source and image
+        id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            source_sha="$WORKFLOW_RUN_SHA"
+          else
+            source_sha="$GITHUB_SHA"
+          fi
+
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER}/weather-image:sha-$source_sha" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Check out current main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Check source is current
+        id: current
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+        run: |
+          main_sha=$(git rev-parse HEAD)
+          if [ "$SOURCE_SHA" = "$main_sha" ]; then
+            echo "is_current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping publication for stale revision $SOURCE_SHA; current main is $main_sha."
+          fi
+
+      - name: Log in to GHCR
+        if: steps.current.outputs.is_current == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: steps.current.outputs.is_current == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Verify commit-specific image
+        id: image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE: ${{ steps.source.outputs.image }}
+          IS_CURRENT: ${{ steps.current.outputs.is_current }}
+        run: |
+          echo "should_publish=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$IS_CURRENT" != "true" ]; then
+            exit 0
+          fi
+
+          if docker buildx imagetools inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            echo "::notice::Skipping scheduled publication because $IMAGE is not available yet; the image workflow will publish after a successful build."
+            exit 0
+          fi
+
+          echo "::error::Required canonical image does not exist: $IMAGE"
+          exit 1
+
+  publish:
+    needs: resolve
+    if: needs.resolve.outputs.should_publish == 'true'
 
     runs-on: ubuntu-latest
+    concurrency:
+      group: quarto-pub-production
+      cancel-in-progress: false
+      queue: max
 
     container:
-      image: ghcr.io/${{ github.repository_owner }}/weather-image:latest
+      image: ${{ needs.resolve.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --user root
 
     steps:
       - name: Check out
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.source_sha }}
 
       - name: Determine cache year
         id: cache-date
@@ -64,7 +157,28 @@ jobs:
             _targets/meta/meta
           key: targets-v1-${{ runner.os }}-${{ steps.cache-date.outputs.year }}-${{ hashFiles('_targets.R', 'R/functions.R', 'Dockerfile') }}
 
+      - name: Recheck source is current before publication
+        id: final-current
+        env:
+          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+        run: |
+          echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          main_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+
+          if [ -z "$main_sha" ]; then
+            echo "::error::Could not resolve refs/heads/main from origin."
+            exit 1
+          fi
+
+          if [ "$SOURCE_SHA" != "$main_sha" ]; then
+            echo "::notice::Skipping Quarto publication for stale revision $SOURCE_SHA; current main is $main_sha."
+            exit 0
+          fi
+
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
       - name: Publish dashboard
+        if: steps.final-current.outputs.should_publish == 'true'
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           target: quarto-pub
