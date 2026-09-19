@@ -300,7 +300,7 @@ test_that("filter_data excludes leap days", {
     expect_equal(result$date, as.Date(c("2024-02-28", "2024-03-01")))
 })
 
-make_local_hourly_day <- function(date, timezone = "Europe/Berlin") {
+make_elapsed_hourly_day <- function(date, timezone = "Europe/Berlin") {
     date <- as.Date(date)
     start <- as.POSIXct(paste(date, "00:00:00"), tz = timezone)
     next_start <- as.POSIXct(paste(date + 1, "00:00:00"), tz = timezone)
@@ -322,9 +322,31 @@ make_local_hourly_day <- function(date, timezone = "Europe/Berlin") {
     )
 }
 
+make_openmeteo_hourly_day <- function(date, timezone = "Europe/Berlin") {
+    date <- as.Date(date)
+    local_times <- sprintf("%s %02d:00:00", date, 0:23)
+
+    # Open-Meteo supplies a 24-position wall-clock grid. On spring DST days,
+    # parsing the nonexistent 02:00 in Europe/Berlin normalizes it to 03:00.
+    data.frame(
+        datetime = as.POSIXct(
+            local_times,
+            format = "%Y-%m-%d %H:%M:%S",
+            tz = timezone
+        ),
+        date = rep(date, length(local_times)),
+        hourly_temperature_2m = seq_along(local_times)
+    )
+}
+
+duplicate_hour_in_place_of_another <- function(day, missing, duplicate) {
+    day$datetime[missing] <- day$datetime[duplicate]
+    day
+}
+
 test_that("remove_incomplete_date removes an incomplete ordinary final day", {
-    complete_day <- make_local_hourly_day("2025-01-01")
-    partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
+    complete_day <- make_openmeteo_hourly_day("2025-01-01")
+    partial_day <- head(make_openmeteo_hourly_day("2025-01-02"), 5)
     reference_time <- as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
 
     result <- remove_incomplete_date(
@@ -336,35 +358,26 @@ test_that("remove_incomplete_date removes an incomplete ordinary final day", {
 })
 
 test_that("remove_incomplete_date removes a structurally complete current day", {
-    first_day <- make_local_hourly_day("2025-01-01")
-    final_day <- make_local_hourly_day("2025-01-02")
+    first_day <- make_openmeteo_hourly_day("2025-01-01")
+    final_day <- make_openmeteo_hourly_day("2025-01-02")
     response <- bind_rows(first_day, final_day)
     reference_time <- as.POSIXct("2025-01-02 12:00:00", tz = "Europe/Berlin")
 
     expect_equal(remove_incomplete_date(response, reference_time), first_day)
 })
 
-test_that("remove_incomplete_date removes a structurally complete current spring DST day", {
-    spring_day <- make_local_hourly_day("2025-03-30")
+test_that("remove_incomplete_date removes a valid current spring DST day", {
+    spring_day <- make_openmeteo_hourly_day("2025-03-30")
     reference_time <- as.POSIXct("2025-03-30 12:00:00", tz = "Europe/Berlin")
 
-    expect_equal(nrow(spring_day), 23)
+    expect_equal(nrow(spring_day), 24)
     expect_equal(remove_incomplete_date(spring_day, reference_time), spring_day[0, ])
 })
 
-test_that("remove_incomplete_date removes a structurally complete current autumn DST day", {
-    autumn_day <- make_local_hourly_day("2025-10-26")
-    reference_time <- as.POSIXct("2025-10-26 12:00:00", tz = "Europe/Berlin")
-
-    expect_equal(nrow(autumn_day), 25)
-    expect_equal(sum(duplicated(autumn_day$datetime)), 1)
-    expect_equal(remove_incomplete_date(autumn_day, reference_time), autumn_day[0, ])
-})
-
 test_that("remove_incomplete_date retains complete days after local midnight", {
-    ordinary_day <- make_local_hourly_day("2025-01-02")
-    spring_day <- make_local_hourly_day("2025-03-30")
-    autumn_day <- make_local_hourly_day("2025-10-26")
+    ordinary_day <- make_openmeteo_hourly_day("2025-01-02")
+    spring_day <- make_openmeteo_hourly_day("2025-03-30")
+    autumn_day <- make_openmeteo_hourly_day("2025-10-26")
 
     expect_equal(
         remove_incomplete_date(
@@ -389,9 +402,104 @@ test_that("remove_incomplete_date retains complete days after local midnight", {
     )
 })
 
+test_that("remove_incomplete_date rejects same-count ordinary hour corruption", {
+    ordinary_day <- make_openmeteo_hourly_day("2025-01-02")
+    corrupted_day <- duplicate_hour_in_place_of_another(ordinary_day, 5, 4)
+    reference_time <- as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
+
+    expect_equal(
+        remove_incomplete_date(corrupted_day, reference_time),
+        corrupted_day[0, ]
+    )
+})
+
+test_that("remove_incomplete_date rejects same-count spring DST corruption", {
+    spring_day <- make_openmeteo_hourly_day("2025-03-30")
+    corrupted_day <- duplicate_hour_in_place_of_another(spring_day, 5, 4)
+    reference_time <- as.POSIXct("2025-03-31 00:00:00", tz = "Europe/Berlin")
+
+    expect_equal(nrow(corrupted_day), 24)
+    expect_equal(
+        remove_incomplete_date(corrupted_day, reference_time),
+        corrupted_day[0, ]
+    )
+})
+
+test_that("remove_incomplete_date rejects same-count autumn DST corruption", {
+    autumn_day <- make_openmeteo_hourly_day("2025-10-26")
+    corrupted_day <- duplicate_hour_in_place_of_another(autumn_day, 6, 5)
+    reference_time <- as.POSIXct("2025-10-27 00:00:00", tz = "Europe/Berlin")
+
+    expect_equal(nrow(corrupted_day), 24)
+    expect_equal(
+        remove_incomplete_date(corrupted_day, reference_time),
+        corrupted_day[0, ]
+    )
+})
+
+test_that("remove_incomplete_date accepts Open-Meteo DST wall-clock grids", {
+    spring_day <- make_openmeteo_hourly_day("2025-03-30")
+    autumn_day <- make_openmeteo_hourly_day("2025-10-26")
+
+    expect_equal(nrow(spring_day), 24)
+    expect_equal(sum(duplicated(spring_day$datetime)), 1)
+    expect_equal(
+        remove_incomplete_date(
+            spring_day,
+            as.POSIXct("2025-03-31 00:00:00", tz = "Europe/Berlin")
+        ),
+        spring_day
+    )
+    expect_equal(nrow(autumn_day), 24)
+    expect_equal(sum(duplicated(autumn_day$datetime)), 0)
+    expect_equal(
+        remove_incomplete_date(
+            autumn_day,
+            as.POSIXct("2025-10-27 00:00:00", tz = "Europe/Berlin")
+        ),
+        autumn_day
+    )
+})
+
+test_that("remove_incomplete_date rejects a 23-hour spring elapsed-time pattern", {
+    spring_day <- make_elapsed_hourly_day("2025-03-30")
+    openmeteo_day <- make_openmeteo_hourly_day("2025-03-30")
+
+    expect_equal(nrow(spring_day), 23)
+    expect_equal(
+        sum(format(spring_day$datetime, "%H", tz = "Europe/Berlin") == "03"),
+        1
+    )
+    expect_equal(
+        sum(format(openmeteo_day$datetime, "%H", tz = "Europe/Berlin") == "03"),
+        2
+    )
+    expect_equal(
+        remove_incomplete_date(
+            spring_day,
+            as.POSIXct("2025-03-31 00:00:00", tz = "Europe/Berlin")
+        ),
+        spring_day[0, ]
+    )
+})
+
+test_that("remove_incomplete_date rejects a 25-hour autumn elapsed-time pattern", {
+    autumn_day <- make_elapsed_hourly_day("2025-10-26")
+
+    expect_equal(nrow(autumn_day), 25)
+    expect_equal(sum(duplicated(autumn_day$datetime)), 1)
+    expect_equal(
+        remove_incomplete_date(
+            autumn_day,
+            as.POSIXct("2025-10-27 00:00:00", tz = "Europe/Berlin")
+        ),
+        autumn_day[0, ]
+    )
+})
+
 test_that("remove_incomplete_date only removes the incomplete final date", {
-    earlier_day <- make_local_hourly_day("2025-03-30")
-    partial_final_day <- head(make_local_hourly_day("2025-03-31"), 5)
+    earlier_day <- make_openmeteo_hourly_day("2025-03-30")
+    partial_final_day <- head(make_openmeteo_hourly_day("2025-03-31"), 5)
 
     result <- remove_incomplete_date(
         bind_rows(earlier_day, partial_final_day),
@@ -402,9 +510,9 @@ test_that("remove_incomplete_date only removes the incomplete final date", {
 })
 
 test_that("remove_incomplete_date is independent of row order", {
-    complete_day <- make_local_hourly_day("2025-01-01")
-    partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
-    ordered <- bind_rows(complete_day, partial_day)
+    first_day <- make_openmeteo_hourly_day("2025-01-01")
+    final_day <- make_openmeteo_hourly_day("2025-01-02")
+    ordered <- bind_rows(first_day, final_day)
     unsorted <- bind_rows(ordered[-1, ], ordered[1, ])
     reference_time <- as.POSIXct("2025-01-03 00:00:00", tz = "Europe/Berlin")
 
