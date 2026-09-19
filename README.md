@@ -37,7 +37,7 @@ Each response passes through `validate_raw_data()` before the datasets are combi
 
 Retrieval uses a 60-second HTTP timeout and bounded exponential backoff, with at most three attempts by default. Only errors raised while retrieving are retried; a successfully retrieved but invalid response reaches validation and fails without another network request.
 
-After ingestion, the pipeline removes incomplete rows and leap-day observations, calculates historical distributions for each calendar day, and derives the current-year ranges, records, extremes, and annual trend used by the dashboard. The most recent date is omitted from the current-year display if it does not contain 24 hourly rows.
+After ingestion, the pipeline removes incomplete rows and leap-day observations, calculates historical distributions for each calendar day, and derives the current-year ranges, records, extremes, and annual trend used by the dashboard. The most recent date is omitted from the current-year display if it does not contain the expected number of hourly observations for that Berlin local calendar day, including daylight-saving transitions.
 
 [`{targets}`](https://docs.ropensci.org/targets/) declares the dependencies between these steps, persists intermediate results, and rebuilds only targets whose inputs have changed. The daily GitHub Actions workflow restores target objects and metadata from a year- and source-sensitive cache. This allows the stable historical branch to be reused when its inputs are unchanged while the always-cued date and dependent current-year results update. Quarto then reads the completed targets store and renders the dashboard for publication to Quarto Pub.
 

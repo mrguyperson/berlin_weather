@@ -200,11 +200,24 @@ remove_incomplete_date <- function(filtered_data) {
     last_date <- filtered_data %>%
         pull(date) %>%
         max()
-    
+
+    timezone <- lubridate::tz(filtered_data$datetime)
+    day_start <- as.POSIXct(
+        paste(last_date, "00:00:00"),
+        tz = timezone
+    )
+    next_day_start <- as.POSIXct(
+        paste(last_date + lubridate::days(1), "00:00:00"),
+        tz = timezone
+    )
+    expected_rows <- as.numeric(
+        difftime(next_day_start, day_start, units = "hours")
+    )
+
     num_rows <- filtered_data %>%
         filter(date == last_date) %>%
         nrow()
-    if(num_rows != 24) {
+    if(num_rows != expected_rows) {
         filtered_data %>%
             filter(date != last_date)
     } else {

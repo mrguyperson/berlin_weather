@@ -300,44 +300,74 @@ test_that("filter_data excludes leap days", {
     expect_equal(result$date, as.Date(c("2024-02-28", "2024-03-01")))
 })
 
-test_that("remove_incomplete_date removes an ordered partial final day", {
-    complete_day <- data.frame(
-        date = rep(as.Date("2025-01-01"), 24),
-        hour = 0:23
+make_local_hourly_day <- function(date, timezone = "Europe/Berlin") {
+    date <- as.Date(date)
+    start <- as.POSIXct(paste(date, "00:00:00"), tz = timezone)
+    next_start <- as.POSIXct(paste(date + 1, "00:00:00"), tz = timezone)
+    instants <- seq(start, next_start - 3600, by = "hour")
+    local_times <- format(
+        instants,
+        format = "%Y-%m-%d %H:%M:%S",
+        tz = timezone
     )
-    partial_day <- data.frame(
-        date = rep(as.Date("2025-01-02"), 5),
-        hour = 0:4
+
+    data.frame(
+        datetime = as.POSIXct(
+            local_times,
+            format = "%Y-%m-%d %H:%M:%S",
+            tz = timezone
+        ),
+        date = rep(date, length(local_times)),
+        hourly_temperature_2m = seq_along(local_times)
     )
+}
+
+test_that("remove_incomplete_date removes an incomplete ordinary final day", {
+    complete_day <- make_local_hourly_day("2025-01-01")
+    partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
 
     result <- remove_incomplete_date(bind_rows(complete_day, partial_day))
 
     expect_equal(result, complete_day)
 })
 
-test_that("remove_incomplete_date retains a complete final day", {
-    first_day <- data.frame(
-        date = rep(as.Date("2025-01-01"), 24),
-        hour = 0:23
-    )
-    final_day <- data.frame(
-        date = rep(as.Date("2025-01-02"), 24),
-        hour = 0:23
-    )
+test_that("remove_incomplete_date retains a complete ordinary final day", {
+    first_day <- make_local_hourly_day("2025-01-01")
+    final_day <- make_local_hourly_day("2025-01-02")
     response <- bind_rows(first_day, final_day)
 
     expect_equal(remove_incomplete_date(response), response)
 })
 
+test_that("remove_incomplete_date retains a complete spring DST day", {
+    spring_day <- make_local_hourly_day("2025-03-30")
+
+    expect_equal(nrow(spring_day), 23)
+    expect_equal(remove_incomplete_date(spring_day), spring_day)
+})
+
+test_that("remove_incomplete_date retains a complete autumn DST day", {
+    autumn_day <- make_local_hourly_day("2025-10-26")
+
+    expect_equal(nrow(autumn_day), 25)
+    expect_equal(sum(duplicated(autumn_day$datetime)), 1)
+    expect_equal(remove_incomplete_date(autumn_day), autumn_day)
+})
+
+test_that("remove_incomplete_date only removes the incomplete final date", {
+    earlier_day <- make_local_hourly_day("2025-03-30")
+    partial_final_day <- head(make_local_hourly_day("2025-03-31"), 5)
+
+    result <- remove_incomplete_date(
+        bind_rows(earlier_day, partial_final_day)
+    )
+
+    expect_equal(result, earlier_day)
+})
+
 test_that("remove_incomplete_date is independent of row order", {
-    complete_day <- data.frame(
-        date = rep(as.Date("2025-01-01"), 24),
-        hour = 0:23
-    )
-    partial_day <- data.frame(
-        date = rep(as.Date("2025-01-02"), 5),
-        hour = 0:4
-    )
+    complete_day <- make_local_hourly_day("2025-01-01")
+    partial_day <- head(make_local_hourly_day("2025-01-02"), 5)
     ordered <- bind_rows(complete_day, partial_day)
     unsorted <- bind_rows(ordered[-1, ], ordered[1, ])
 
@@ -345,7 +375,7 @@ test_that("remove_incomplete_date is independent of row order", {
     unsorted_result <- remove_incomplete_date(unsorted)
 
     expect_equal(
-        arrange(unsorted_result, date, hour),
-        arrange(ordered_result, date, hour)
+        arrange(unsorted_result, date, datetime),
+        arrange(ordered_result, date, datetime)
     )
 })
