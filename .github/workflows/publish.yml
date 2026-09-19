@@ -163,10 +163,11 @@ jobs:
           SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
         run: |
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
-          main_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+          repository_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          main_sha=$(git ls-remote "$repository_url" refs/heads/main | awk 'NR == 1 {print $1}')
 
           if [ -z "$main_sha" ]; then
-            echo "::error::Could not resolve refs/heads/main from origin."
+            echo "::error::Could not resolve refs/heads/main from $repository_url."
             exit 1
           fi
 
