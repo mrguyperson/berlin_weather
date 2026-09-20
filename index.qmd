@@ -77,8 +77,8 @@ tar_load(top_10_coldest)
 
 :::
 
-::: {.valuebox icon="thermometer-half" color="secondary"}
-**Latest day vs. historical median:**
+::: {.valuebox icon="arrow-left-right" color="light"}
+**Latest-day anomaly:**
 
 `r if (nrow(latest_day_summary) == 0) "—" else glue("{sprintf('%+.1f', latest_day_summary$anomaly)} °C")`
 
