@@ -4,7 +4,7 @@ Berlin Weather is an automated R and Quarto dashboard that compares recent weath
 
 **[View the live dashboard](https://mrguyperson.quarto.pub/berlin_weather)**
 
-The dashboard shows the current year's daily temperature ranges against long-term daily distributions, identifies new heat and cold records, lists extreme observed temperatures, and summarizes the hottest year, coldest year, and long-run annual temperature trend. Leap days are excluded so calendar days align consistently across years.
+The dashboard shows the current year's daily temperature ranges against long-term daily distributions, summarizes how the latest completed day's mean compares with the same calendar date historically, identifies new heat and cold records, lists extreme observed temperatures, and reports the hottest year, coldest year, and long-run annual temperature trend. Leap days are excluded so calendar days align consistently across years.
 
 ## Why this project exists
 

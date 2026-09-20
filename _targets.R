@@ -95,6 +95,10 @@ list(
     command = get_this_year(filtered_data, reference_time)
   ),
   tar_target(
+    name = latest_day_summary,
+    command = summarize_latest_day(filtered_data, this_year)
+  ),
+  tar_target(
     name = history_with_calendar,
     command = add_calendar_to_historical(calendar, historical_data)
   ),

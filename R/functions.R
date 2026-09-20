@@ -213,6 +213,21 @@ expected_openmeteo_hour_labels <- function(date) {
     )
 }
 
+has_complete_openmeteo_hours <- function(data) {
+    dates <- unique(data$date)
+    if (nrow(data) == 0 || length(dates) != 1) {
+        return(FALSE)
+    }
+
+    observed_hours <- sort(format(
+        data$datetime,
+        "%Y-%m-%d %H:%M:%S",
+        tz = "Europe/Berlin"
+    ))
+
+    identical(observed_hours, expected_openmeteo_hour_labels(dates[[1]]))
+}
+
 remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%
@@ -224,13 +239,11 @@ remove_incomplete_date <- function(filtered_data, reference_time) {
         tz = timezone
     )
 
-    observed_hours <- filtered_data %>%
-        filter(date == last_date) %>%
-        pull(datetime) %>%
-        format("%Y-%m-%d %H:%M:%S", tz = timezone) %>%
-        sort()
-    expected_hours <- expected_openmeteo_hour_labels(last_date)
-    has_expected_hours <- identical(observed_hours, expected_hours)
+    final_date_observations <- filtered_data %>%
+        filter(date == last_date)
+    has_expected_hours <- has_complete_openmeteo_hours(
+        final_date_observations
+    )
     day_has_ended <- reference_time >= next_day_start
 
     if(!day_has_ended || !has_expected_hours) {
@@ -244,18 +257,92 @@ remove_incomplete_date <- function(filtered_data, reference_time) {
 get_this_year <- function(filtered_data, reference_time) {
 
     data_w_date_check <- remove_incomplete_date(filtered_data, reference_time)
+    current_year <- lubridate::year(lubridate::with_tz(
+        reference_time,
+        "Europe/Berlin"
+    ))
 
-    data_w_date_check %>%
+    current_data <- data_w_date_check %>%
         filter(
-            year(date) == max(year(date))
-             ) %>%
+            year(date) == current_year
+        )
+
+    if (nrow(current_data) == 0) {
+        return(tibble(
+            date = as.Date(character()),
+            this_year_min = double(),
+            this_year_max = double(),
+            this_year_mean = double()
+        ))
+    }
+
+    current_data %>%
+        group_by(date) %>%
         summarize(
             this_year_min = min(hourly_temperature_2m), 
             this_year_max = max(hourly_temperature_2m), 
-            this_year_mean = mean(hourly_temperature_2m), 
+            this_year_mean = mean(hourly_temperature_2m),
+            .groups = "drop"
+        )
+
+}
+
+summarize_latest_day <- function(filtered_data, this_year) {
+    empty_summary <- tibble(
+        date = as.Date(character()),
+        current_mean = double(),
+        historical_median = double(),
+        anomaly = double(),
+        percentile = double()
+    )
+
+    if (nrow(this_year) == 0) {
+        return(empty_summary)
+    }
+
+    latest_date <- max(this_year$date)
+    current_mean <- this_year %>%
+        filter(date == latest_date) %>%
+        pull(this_year_mean)
+
+    historical_observations <- filtered_data %>%
+        filter(
+            year(date) < year(latest_date),
+            month(date) == month(latest_date),
+            mday(date) == mday(latest_date)
+        )
+    historical_dates <- split(
+        historical_observations,
+        historical_observations$date
+    )
+    complete_dates <- historical_dates[vapply(
+        historical_dates,
+        has_complete_openmeteo_hours,
+        logical(1)
+    )]
+
+    if (length(current_mean) == 0 || length(complete_dates) == 0) {
+        return(empty_summary)
+    }
+
+    historical_daily_means <- bind_rows(complete_dates) %>%
+        summarize(
+            daily_mean = mean(hourly_temperature_2m),
             .by = date
         )
 
+    historical_median <- median(historical_daily_means$daily_mean)
+
+    tibble(
+        date = latest_date,
+        current_mean = current_mean,
+        historical_median = historical_median,
+        anomaly = current_mean - historical_median,
+        # Empirical percentile includes historical daily means tied with today.
+        percentile = mean(
+            historical_daily_means$daily_mean <= current_mean
+        ) * 100
+    )
 }
 
 add_calendar_to_historical <- function(calendar, historical_data) {

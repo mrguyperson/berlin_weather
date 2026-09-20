@@ -40,6 +40,7 @@ tar_load(today)
 tar_load(hottest_year)
 tar_load(coldest_year)
 tar_load(temperature_slope)
+tar_load(latest_day_summary)
 
 # for map label
 tar_load(lat)
@@ -94,6 +95,15 @@ Last updated **`r make_nice_date(today())`**.
 :::
 
 ## Column
+
+### Row - latest completed day {height="20%"}
+
+::: {.valuebox icon="calendar-check" color="#4c78a8"}
+**Latest completed day**
+
+`r if (nrow(latest_day_summary) == 0) "No completed day is available." else glue("{day(latest_day_summary$date)} {month(latest_day_summary$date, label = TRUE, abbr = FALSE)}<br>Mean: {round(latest_day_summary$current_mean, 1)} °C<br>Historical median: {round(latest_day_summary$historical_median, 1)} °C<br>{sprintf('%+.1f', latest_day_summary$anomaly)} °C vs historical median<br>{round(latest_day_summary$percentile)}% of historical daily means were at or below this value")`
+
+:::
 
 ### Row - map
 ``` {r}
