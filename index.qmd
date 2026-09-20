@@ -77,10 +77,10 @@ tar_load(top_10_coldest)
 
 :::
 
-::: {.valuebox icon="arrow-left-right" color="light"}
+::: {.valuebox icon="activity" color="light"}
 **Latest-day anomaly:**
 
-`r if (nrow(latest_day_summary) == 0) "—" else glue("{sprintf('%+.1f', latest_day_summary$anomaly)} °C")`
+`r glue("{if (nrow(latest_day_summary) == 0) '—' else sprintf('%+.1f\u00A0°C', latest_day_summary$anomaly)}")`
 
 :::
 
