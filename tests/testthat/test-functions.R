@@ -524,3 +524,213 @@ test_that("remove_incomplete_date is independent of row order", {
         arrange(ordered_result, date, datetime)
     )
 })
+
+test_that("get_this_year is empty before the first current-year day completes", {
+    previous_year <- make_openmeteo_hourly_day("2024-12-31")
+    current_day <- make_openmeteo_hourly_day("2025-01-01")
+    reference_time <- as.POSIXct("2025-01-01 12:00:00", tz = "Europe/Berlin")
+
+    result <- get_this_year(
+        bind_rows(previous_year, current_day),
+        reference_time
+    )
+
+    expect_equal(nrow(result), 0)
+})
+
+test_that("get_this_year calculates daily means from hourly observations", {
+    current_day <- make_openmeteo_hourly_day("2025-01-01")
+    current_day$hourly_temperature_2m <- c(rep(0, 12), rep(10, 12))
+
+    result <- get_this_year(
+        current_day,
+        as.POSIXct("2025-01-02 00:00:00", tz = "Europe/Berlin")
+    )
+
+    expect_equal(result$this_year_mean, 5)
+})
+
+make_temperature_day <- function(date, temperatures) {
+    day <- make_openmeteo_hourly_day(date)
+    day$hourly_temperature_2m <- rep(
+        temperatures,
+        length.out = nrow(day)
+    )
+    day
+}
+
+test_that("summarize_latest_day selects the latest completed current date", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", c(0, 2)),
+        make_temperature_day("2021-09-18", c(4, 6)),
+        make_temperature_day("2022-09-18", c(8, 10)),
+        make_temperature_day("2025-09-17", c(2, 4)),
+        make_temperature_day("2025-09-18", c(8, 12))
+    )
+    this_year <- tibble(
+        date = as.Date(c("2025-09-17", "2025-09-18")),
+        this_year_mean = c(3, 10)
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$date, as.Date("2025-09-18"))
+    expect_equal(result$current_mean, 10)
+    expect_equal(result$historical_median, 5)
+    expect_equal(result$anomaly, 5)
+    expect_equal(result$percentile, 100)
+})
+
+test_that("summarize_latest_day uses historical daily means for the same date", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", 0),
+        make_temperature_day("2021-09-18", c(10, 10, 10)),
+        make_temperature_day("2022-09-17", c(-100, 100)),
+        make_temperature_day("2025-09-18", c(4, 8))
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 6
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$current_mean, 6)
+    expect_equal(result$historical_median, 5)
+    expect_equal(result$anomaly, 1)
+})
+
+test_that("summarize_latest_day calculates negative anomalies and low percentiles", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", 1),
+        make_temperature_day("2021-09-18", 5),
+        make_temperature_day("2022-09-18", 9),
+        make_temperature_day("2025-09-18", c(-1, 1))
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 0
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$anomaly, -5)
+    expect_equal(result$percentile, 0)
+})
+
+test_that("summarize_latest_day includes historical ties in the percentile", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", 1),
+        make_temperature_day("2021-09-18", 5),
+        make_temperature_day("2022-09-18", 9),
+        make_temperature_day("2025-09-18", 5)
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 5
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$percentile, 200 / 3)
+})
+
+test_that("summarize_latest_day is independent of input row order", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", c(0, 2)),
+        make_temperature_day("2021-09-18", c(4, 6)),
+        make_temperature_day("2025-09-18", c(8, 12))
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 10
+    )
+
+    ordered <- summarize_latest_day(filtered_data, this_year)
+    shuffled <- summarize_latest_day(
+        filtered_data[c(25:72, 1:24), ],
+        this_year
+    )
+
+    expect_equal(shuffled, ordered)
+})
+
+test_that("summarize_latest_day returns no metric without required observations", {
+    current_data <- make_temperature_day("2025-09-18", c(8, 12))
+    completed <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 10
+    )
+
+    expect_equal(nrow(summarize_latest_day(current_data, completed[0, ])), 0)
+    expect_equal(nrow(summarize_latest_day(current_data, completed)), 0)
+})
+
+test_that("summarize_latest_day excludes a partial historical date", {
+    partial_day <- make_temperature_day("2022-09-18", 100)[1:12, ]
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", 0),
+        make_temperature_day("2021-09-18", 10),
+        partial_day
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 6
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$historical_median, 5)
+    expect_equal(result$anomaly, 1)
+    expect_equal(result$percentile, 50)
+})
+
+test_that("summarize_latest_day excludes same-count historical corruption", {
+    corrupted_day <- make_temperature_day("2022-09-18", -100)
+    corrupted_day <- duplicate_hour_in_place_of_another(corrupted_day, 5, 4)
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-09-18", 0),
+        make_temperature_day("2021-09-18", 10),
+        corrupted_day
+    )
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 6
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$historical_median, 5)
+    expect_equal(result$anomaly, 1)
+    expect_equal(result$percentile, 50)
+})
+
+test_that("summarize_latest_day accepts complete historical DST dates", {
+    filtered_data <- bind_rows(
+        make_temperature_day("2020-03-29", 4),
+        make_temperature_day("2026-03-29", 8)
+    )
+    this_year <- tibble(
+        date = as.Date("2026-03-29"),
+        this_year_mean = 8
+    )
+
+    result <- summarize_latest_day(filtered_data, this_year)
+
+    expect_equal(result$historical_median, 4)
+    expect_equal(result$percentile, 100)
+})
+
+test_that("summarize_latest_day is empty without complete historical dates", {
+    partial_history <- make_temperature_day("2020-09-18", 4)[-1, ]
+    this_year <- tibble(
+        date = as.Date("2025-09-18"),
+        this_year_mean = 8
+    )
+
+    result <- summarize_latest_day(partial_history, this_year)
+
+    expect_equal(nrow(result), 0)
+    expect_s3_class(result$date, "Date")
+    expect_type(result$historical_median, "double")
+})
