@@ -301,14 +301,29 @@ test_that("filter_data excludes leap days", {
     expect_equal(result$date, as.Date(c("2024-02-28", "2024-03-01")))
 })
 
-test_that("make_historical_data summarizes pooled hourly observations", {
-    filtered_data <- tibble(
-        date = as.Date(c(
-            "2022-01-01", "2022-01-01",
-            "2023-01-01", "2023-01-01"
-        )),
-        hourly_temperature_2m = c(0, 10, 20, 30)
+make_openmeteo_hourly_day <- function(date, timezone = "Europe/Berlin") {
+    date <- as.Date(date)
+    local_times <- sprintf("%s %02d:00:00", date, 0:23)
+
+    # Open-Meteo supplies a 24-position wall-clock grid. On spring DST days,
+    # parsing the nonexistent 02:00 in Europe/Berlin normalizes it to 03:00.
+    data.frame(
+        datetime = as.POSIXct(
+            local_times,
+            format = "%Y-%m-%d %H:%M:%S",
+            tz = timezone
+        ),
+        date = rep(date, length(local_times)),
+        hourly_temperature_2m = seq_along(local_times)
     )
+}
+
+test_that("make_historical_data summarizes pooled hourly observations", {
+    first_year <- make_openmeteo_hourly_day("2022-01-01")
+    first_year$hourly_temperature_2m <- 0
+    second_year <- make_openmeteo_hourly_day("2023-01-01")
+    second_year$hourly_temperature_2m <- 20
+    filtered_data <- bind_rows(first_year, second_year)
 
     result <- add_calendar_to_historical(
         make_calendar(as.Date("2025-06-01")),
@@ -317,23 +332,103 @@ test_that("make_historical_data summarizes pooled hourly observations", {
         filter(date == as.Date("2025-01-01"))
 
     expect_equal(result$min, 0)
-    expect_equal(unname(result$x5), 1.5)
-    expect_equal(unname(result$x25), 7.5)
-    expect_equal(result$avg, 15)
-    expect_equal(unname(result$x75), 22.5)
-    expect_equal(unname(result$x95), 28.5)
-    expect_equal(result$max, 30)
+    expect_equal(unname(result$x5), 0)
+    expect_equal(unname(result$x25), 0)
+    expect_equal(result$avg, 10)
+    expect_equal(unname(result$x75), 20)
+    expect_equal(unname(result$x95), 20)
+    expect_equal(result$max, 20)
+})
+
+test_that("make_historical_data excludes structurally incomplete dates", {
+    complete_day <- make_openmeteo_hourly_day("2022-01-01")
+    complete_day$hourly_temperature_2m <- 0
+    partial_day <- make_openmeteo_hourly_day("2023-01-01")[1:12, ]
+    partial_day$hourly_temperature_2m <- 100
+
+    result <- make_historical_data(
+        bind_rows(complete_day, partial_day),
+        as.Date("2025-06-01")
+    )
+
+    expect_equal(result$avg, 0)
+    expect_equal(result$max, 0)
+})
+
+test_that("complete historical years contribute and corrupt years do not", {
+    first_complete <- make_openmeteo_hourly_day("2021-01-01")
+    first_complete$hourly_temperature_2m <- 0
+    second_complete <- make_openmeteo_hourly_day("2022-01-01")
+    second_complete$hourly_temperature_2m <- 10
+    partial <- make_openmeteo_hourly_day("2023-01-01")[-1, ]
+    partial$hourly_temperature_2m <- 100
+    duplicated <- make_openmeteo_hourly_day("2024-01-01")
+    duplicated$datetime[5] <- duplicated$datetime[4]
+    duplicated$hourly_temperature_2m <- 200
+
+    result <- make_historical_data(
+        bind_rows(first_complete, second_complete, partial, duplicated),
+        as.Date("2025-06-01")
+    )
+
+    expect_equal(result$min, 0)
+    expect_equal(result$avg, 5)
+    expect_equal(result$max, 10)
+})
+
+test_that("historical completeness accepts Open-Meteo DST grids", {
+    spring <- make_openmeteo_hourly_day("2022-03-27")
+    autumn <- make_openmeteo_hourly_day("2022-10-30")
+
+    result <- filter_complete_historical_dates(bind_rows(spring, autumn))
+
+    expect_equal(nrow(result), 48)
+    expect_equal(sort(unique(result$date)), sort(c(spring$date[1], autumn$date[1])))
+})
+
+test_that("historical completeness filtering is independent of row order", {
+    complete <- make_openmeteo_hourly_day("2022-01-01")
+    partial <- make_openmeteo_hourly_day("2023-01-01")[-1, ]
+    observations <- bind_rows(complete, partial)
+    shuffled <- observations[c(seq(nrow(observations), 1)), ]
+
+    ordered_result <- filter_complete_historical_dates(observations)
+    shuffled_result <- filter_complete_historical_dates(shuffled)
+
+    expect_equal(
+        arrange(shuffled_result, date, datetime),
+        arrange(ordered_result, date, datetime)
+    )
+})
+
+test_that("historical completeness excludes partial and corrupt dates", {
+    complete <- make_openmeteo_hourly_day("2021-01-01")
+    partial <- make_openmeteo_hourly_day("2022-01-01")[-1, ]
+    corrupted <- make_openmeteo_hourly_day("2023-01-01")
+    corrupted$datetime[5] <- corrupted$datetime[4]
+
+    result <- filter_complete_historical_dates(
+        bind_rows(complete, partial, corrupted)
+    )
+
+    expect_equal(unique(result$date), as.Date("2021-01-01"))
+    expect_equal(nrow(result), 24)
 })
 
 test_that("make_historical_data excludes current-year observations", {
-    filtered_data <- tibble(
-        date = as.Date(c("2022-01-01", "2023-01-01", "2025-01-01")),
-        hourly_temperature_2m = c(0, 10, 1000)
-    )
+    first_year <- make_openmeteo_hourly_day("2022-01-01")
+    first_year$hourly_temperature_2m <- 0
+    second_year <- make_openmeteo_hourly_day("2023-01-01")
+    second_year$hourly_temperature_2m <- 10
+    current_year <- make_openmeteo_hourly_day("2025-01-01")
+    current_year$hourly_temperature_2m <- 1000
 
     result <- add_calendar_to_historical(
         make_calendar(as.Date("2025-06-01")),
-        make_historical_data(filtered_data, as.Date("2025-06-01"))
+        make_historical_data(
+            bind_rows(first_year, second_year, current_year),
+            as.Date("2025-06-01")
+        )
     ) %>%
         filter(date == as.Date("2025-01-01"))
 
@@ -343,15 +438,20 @@ test_that("make_historical_data excludes current-year observations", {
 })
 
 test_that("historical calendar mapping is independent of input row order", {
-    ordered <- tibble(
-        date = as.Date(c(
-            "2022-01-01", "2023-01-01",
-            "2022-01-02", "2023-01-02",
-            "2022-01-03", "2023-01-03"
-        )),
-        hourly_temperature_2m = c(0, 2, 10, 12, 20, 22)
+    temperature_day <- function(date, temperature) {
+        day <- make_openmeteo_hourly_day(date)
+        day$hourly_temperature_2m <- temperature
+        day
+    }
+    ordered <- bind_rows(
+        temperature_day("2022-01-01", 0),
+        temperature_day("2023-01-01", 2),
+        temperature_day("2022-01-02", 10),
+        temperature_day("2023-01-02", 12),
+        temperature_day("2022-01-03", 20),
+        temperature_day("2023-01-03", 22)
     )
-    shuffled <- ordered[c(5, 2, 3, 6, 1, 4), ]
+    shuffled <- ordered[c(97:120, 25:48, 49:96, 121:144, 1:24), ]
     calendar <- make_calendar(as.Date("2025-06-01"))
     summarize_with_calendar <- function(data) {
         add_calendar_to_historical(
@@ -383,23 +483,6 @@ make_elapsed_hourly_day <- function(date, timezone = "Europe/Berlin") {
         tz = timezone
     )
 
-    data.frame(
-        datetime = as.POSIXct(
-            local_times,
-            format = "%Y-%m-%d %H:%M:%S",
-            tz = timezone
-        ),
-        date = rep(date, length(local_times)),
-        hourly_temperature_2m = seq_along(local_times)
-    )
-}
-
-make_openmeteo_hourly_day <- function(date, timezone = "Europe/Berlin") {
-    date <- as.Date(date)
-    local_times <- sprintf("%s %02d:00:00", date, 0:23)
-
-    # Open-Meteo supplies a 24-position wall-clock grid. On spring DST days,
-    # parsing the nonexistent 02:00 in Europe/Berlin normalizes it to 03:00.
     data.frame(
         datetime = as.POSIXct(
             local_times,

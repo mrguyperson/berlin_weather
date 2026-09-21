@@ -160,6 +160,7 @@ make_historical_data <- function(filtered_data, today) {
         filter(
             year(date) != year(today),
             ) %>%
+        filter_complete_historical_dates() %>%
         # summarize( 
         #     hourly_temperature_2m = mean(hourly_temperature_2m), 
         #     .by = date
@@ -227,6 +228,23 @@ has_complete_openmeteo_hours <- function(data) {
     ))
 
     identical(observed_hours, expected_openmeteo_hour_labels(dates[[1]]))
+}
+
+filter_complete_historical_dates <- function(historical_data) {
+    historical_date_rows <- split(
+        seq_len(nrow(historical_data)),
+        historical_data$date
+    )
+    complete_date_names <- names(historical_date_rows)[vapply(
+        historical_date_rows,
+        function(rows) {
+            has_complete_openmeteo_hours(historical_data[rows, ])
+        },
+        logical(1)
+    )]
+
+    historical_data %>%
+        filter(as.character(date) %in% complete_date_names)
 }
 
 remove_incomplete_date <- function(filtered_data, reference_time) {
