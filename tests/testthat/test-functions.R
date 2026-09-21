@@ -1,5 +1,6 @@
 library(testthat)
 library(tidyverse)
+library(glue)
 
 source(testthat::test_path("..", "..", "R", "functions.R"))
 
@@ -298,6 +299,77 @@ test_that("filter_data excludes leap days", {
     result <- filter_data(response)
 
     expect_equal(result$date, as.Date(c("2024-02-28", "2024-03-01")))
+})
+
+test_that("make_historical_data summarizes pooled hourly observations", {
+    filtered_data <- tibble(
+        date = as.Date(c(
+            "2022-01-01", "2022-01-01",
+            "2023-01-01", "2023-01-01"
+        )),
+        hourly_temperature_2m = c(0, 10, 20, 30)
+    )
+
+    result <- add_calendar_to_historical(
+        make_calendar(as.Date("2025-06-01")),
+        make_historical_data(filtered_data, as.Date("2025-06-01"))
+    ) %>%
+        filter(date == as.Date("2025-01-01"))
+
+    expect_equal(result$min, 0)
+    expect_equal(unname(result$x5), 1.5)
+    expect_equal(unname(result$x25), 7.5)
+    expect_equal(result$avg, 15)
+    expect_equal(unname(result$x75), 22.5)
+    expect_equal(unname(result$x95), 28.5)
+    expect_equal(result$max, 30)
+})
+
+test_that("make_historical_data excludes current-year observations", {
+    filtered_data <- tibble(
+        date = as.Date(c("2022-01-01", "2023-01-01", "2025-01-01")),
+        hourly_temperature_2m = c(0, 10, 1000)
+    )
+
+    result <- add_calendar_to_historical(
+        make_calendar(as.Date("2025-06-01")),
+        make_historical_data(filtered_data, as.Date("2025-06-01"))
+    ) %>%
+        filter(date == as.Date("2025-01-01"))
+
+    expect_equal(result$min, 0)
+    expect_equal(result$avg, 5)
+    expect_equal(result$max, 10)
+})
+
+test_that("historical calendar mapping is independent of input row order", {
+    ordered <- tibble(
+        date = as.Date(c(
+            "2022-01-01", "2023-01-01",
+            "2022-01-02", "2023-01-02",
+            "2022-01-03", "2023-01-03"
+        )),
+        hourly_temperature_2m = c(0, 2, 10, 12, 20, 22)
+    )
+    shuffled <- ordered[c(5, 2, 3, 6, 1, 4), ]
+    calendar <- make_calendar(as.Date("2025-06-01"))
+    summarize_with_calendar <- function(data) {
+        add_calendar_to_historical(
+            calendar,
+            make_historical_data(data, as.Date("2025-06-01"))
+        ) %>%
+            filter(date %in% as.Date(c(
+                "2025-01-01", "2025-01-02", "2025-01-03"
+            ))) %>%
+            arrange(date)
+    }
+
+    ordered_result <- summarize_with_calendar(ordered)
+    shuffled_result <- summarize_with_calendar(shuffled)
+
+    expect_equal(ordered_result$avg, c(1, 11, 21))
+    expect_equal(shuffled_result$avg, c(1, 11, 21))
+    expect_equal(shuffled_result, ordered_result)
 })
 
 make_elapsed_hourly_day <- function(date, timezone = "Europe/Berlin") {
