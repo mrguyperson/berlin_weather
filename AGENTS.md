@@ -38,6 +38,16 @@ If solving a problem requires broadening the requested scope, explain why before
 
 Do not change analytical behavior merely to make a test pass.
 
+## Agent-assisted development
+
+GitHub issues and PRs are the durable source of task and review state. Use `.github/ISSUE_TEMPLATE/agent-task.yml` to define desired behavior, acceptance criteria, required validation, and explicit out-of-scope items.
+
+Implement on an isolated branch or worktree, keeping changes within the scoped issue. Use `.github/pull_request_template.md` to link the task and record changes, validation results, documentation review, and remaining limitations. Carry relevant decisions from conversations into the issue or PR so a fresh reviewer can work from the repository, issue, PR diff, tests, and documented instructions alone.
+
+Deterministic tests and checks remain authoritative gates; agent review supplements them. Reviewer findings should identify concrete problems, their impact, and actionable corrections rather than broad stylistic preferences. Humans retain final merge approval unless repository policy explicitly changes.
+
+Give agents only the permissions needed for their task; prefer trusted scripts or actions for privileged GitHub operations over model-generated shell logic. No agent execution or review automation is configured by these templates. If automated review/fix loops are introduced later, bound their iterations and escalate unresolved work to a human.
+
 ## External data boundary
 
 Open-Meteo responses are external, untrusted inputs.
