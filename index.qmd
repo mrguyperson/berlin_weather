@@ -95,6 +95,8 @@ tar_load(top_10_coldest)
 #| fig-asp: 0.35
 make_plot(history_with_calendar, this_year, new_records, city, start_date, today)
 ```
+Historical bands and mean pool hourly temperatures observed on each calendar date across prior years; black marks show each completed day's minimum–maximum temperature this year.
+
 Data provided by [Open-meteo](https://open-meteo.com/).
 Data from leap days (i.e., 29 February) are excluded.
 Last updated **`r make_nice_date(today())`**.
