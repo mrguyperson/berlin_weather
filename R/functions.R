@@ -177,9 +177,7 @@ make_historical_data <- function(filtered_data, today) {
             x95 = quantile(hourly_temperature_2m, 0.95),
             max = max(hourly_temperature_2m), 
             .by = c(month, mday)
-        ) %>%
-        rowid_to_column(var = "day") %>%
-        select(-c(month, mday))
+        )
 
 }
 
@@ -192,7 +190,10 @@ make_calendar <- function(today) {
         date = seq(first_day_this_year, last_day_this_year, by = "+1 day")
     ) %>%
     filter(!(month(date) == 2 & mday(date) == 29)) %>%
-    rowid_to_column(var = "day")
+    mutate(
+        month = month(date),
+        mday = mday(date)
+    )
 
 }
 
@@ -349,9 +350,9 @@ add_calendar_to_historical <- function(calendar, historical_data) {
     left_join(
         calendar,
         historical_data,
-        by = join_by("day")
+        by = join_by(month, mday)
         ) %>%
-        select(-day)
+        select(-c(month, mday))
 }
 
 dummy_legend_data <- function(this_year_data) {
