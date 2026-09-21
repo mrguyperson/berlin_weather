@@ -1,0 +1,55 @@
+name: Agent task
+description: Define a scoped task with enough context for implementation and review.
+labels: ["agent-task"]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task / problem
+      description: Describe the problem or concrete work to be done.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Motivation / context
+      description: Explain why this matters; include evidence or links when useful.
+  - type: textarea
+    id: desired-behavior
+    attributes:
+      label: Desired behavior
+      description: Describe the intended outcome without relying on a chat transcript.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that establish completion.
+      placeholder: "- [ ] Expected outcome"
+    validations:
+      required: true
+  - type: textarea
+    id: relevant-files
+    attributes:
+      label: Likely relevant files
+      description: Optional file paths or entry points to inspect, if known.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required validation / tests
+      description: Name relevant checks or commands, or explain why none are needed.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: State what must remain unchanged; write None if no exclusions apply.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Additional implementation constraints or notes
+      description: Optional compatibility requirements, assumptions, or implementation guidance.
