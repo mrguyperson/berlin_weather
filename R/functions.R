@@ -635,11 +635,41 @@ calculate_one_year_ago <- function(data) {
     }
 }
 
+get_annual_date_coverage <- function(filtered_data, today) {
+    historical <- filtered_data %>%
+        filter(year(date) != year(today))
+    historical_years <- sort(unique(year(historical$date)))
+    complete_dates <- filter_complete_historical_dates(historical)$date
+
+    coverage <- tibble(year = double(), date = as.Date(character()), complete = logical())
+    for (historical_year in historical_years) {
+        expected_dates <- seq(
+            as.Date(sprintf("%d-01-01", historical_year)),
+            as.Date(sprintf("%d-12-31", historical_year)),
+            by = "day"
+        )
+        expected_dates <- expected_dates[
+            !(month(expected_dates) == 2 & mday(expected_dates) == 29)
+        ]
+        coverage <- bind_rows(coverage, tibble(
+            year = historical_year,
+            date = expected_dates,
+            complete = expected_dates %in% complete_dates
+        ))
+    }
+    coverage
+}
+
 get_historical_means <- function(filtered_data, today) {
+    coverage <- get_annual_date_coverage(filtered_data, today) %>%
+        # Project policy: tolerate at most one unusable non-leap date per year.
+        filter(sum(complete) >= 364, .by = year) %>%
+        filter(complete)
+
     filtered_data %>%
-        mutate(year = year(date)) %>%
-        filter(year != year(today)) %>%
-        summarize(temperature = mean(hourly_temperature_2m), .by = year)
+        inner_join(select(coverage, date, year), by = "date") %>%
+        summarize(temperature = mean(hourly_temperature_2m), .by = year) %>%
+        arrange(year)
 }
 
 get_most_extreme_year <- function(filtered_data, today, type = "hottest") {
@@ -659,6 +689,10 @@ get_most_extreme_year <- function(filtered_data, today, type = "hottest") {
 
 calculate_temperature_slope <- function(filtered_data, today) {
     means <- get_historical_means(filtered_data, today)
+    if (nrow(means) < 2) {
+        stop("At least two eligible historical years are required to fit the annual temperature trend.",
+             call. = FALSE)
+    }
     lm(temperature ~ year, data = means) %>% 
         broom::tidy() %>%
         filter(term == "year") %>%

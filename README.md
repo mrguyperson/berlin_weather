@@ -41,6 +41,8 @@ After ingestion, the pipeline removes incomplete rows and leap-day observations.
 
 [`{targets}`](https://docs.ropensci.org/targets/) declares the dependencies between these steps, persists intermediate results, and rebuilds only targets whose inputs have changed. The daily GitHub Actions workflow restores target objects and metadata from a year- and source-sensitive cache. This allows the stable historical branch to be reused when its inputs are unchanged while the always-cued date and dependent current-year results update. Quarto then reads the completed targets store and renders the dashboard for publication to Quarto Pub.
 
+Annual means, hottest/coldest-year rankings, and the long-term trend use only historical years with at least 364 structurally complete dates out of the 365 expected non-leap dates. Means include only complete days; missing and incomplete dates both count against coverage. This is a project data-quality rule, not a universal climatological standard. The current year is excluded, and fitting the trend requires at least two eligible years.
+
 ## Reproducible environment
 
 The environment is described at complementary levels:
