@@ -26,6 +26,7 @@ Imports:
     tidygeocoder,
     tidyverse
 Suggests:
+    covr,
     httpgd,
     jsonlite,
     languageserver,

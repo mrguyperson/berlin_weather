@@ -28,6 +28,14 @@ The project is primarily written in R and uses:
 
 Keep changes narrowly scoped to the requested task.
 
+Before planning or editing any non-trivial task, read `AGENTS.md`, `README.md`,
+`ROADMAP.md`, and the issue or task contract. Treat the issue as the detailed
+scope and acceptance criteria; the roadmap supplies phase-level direction.
+
+Before declaring the task complete, review all three documents again for
+accuracy and roadmap impact. In the final report, state separately for each
+document what changed or why no change was needed.
+
 Before making a non-trivial change:
 
 1. Inspect the relevant existing code and configuration.
@@ -86,6 +94,14 @@ docker run --rm \
   Rscript -e 'testthat::test_dir("tests/testthat")'
 ```
 
+Measure line coverage of reusable R logic with `Rscript scripts/check_coverage.R`
+inside the project container. CI requires at least the committed minimum in
+that script. The minimum is a ratchet: raise it after sustained test gains; do
+not lower it merely to make CI pass. Lowering it requires explicit human-approved
+justification. Effectively complete line coverage is a long-term goal, but
+coverage does not replace meaningful edge-case, regression, and integration
+tests.
+
 Use targeted tests while developing when appropriate, but run the complete suite before considering a relevant change complete.
 
 Never report that tests pass unless they were actually executed successfully. If tests cannot run, state the reason.
@@ -114,11 +130,17 @@ Use minimal GitHub Actions permissions appropriate to the task.
 
 ## Documentation maintenance
 
-When changing architecture, workflows, dependency management, Dev Container behavior, pipeline structure, or user-facing commands, review both `README.md` and `AGENTS.md`. Update documentation in the same change whenever its description becomes inaccurate.
+For every non-trivial task, review `AGENTS.md`, `README.md`, and `ROADMAP.md`
+again before completion. Update any document made inaccurate by changed
+behavior, architecture, workflow, dependencies, commands, or project direction
+in the same change. Routine implementation detail should not churn
+`ROADMAP.md`; update it for phase-level direction, architectural intent, major
+sequencing, or meaningful milestone status.
 
 Pay particular attention when modifying `Dockerfile`, `DESCRIPTION`, `renv.lock`, `renv/**`, `.devcontainer/**`, `.github/workflows/**`, `_targets.R`, or `R/functions.R`. Deleting or renaming a documented file must update references to it.
 
-If these files change but the documentation remains accurate, explicitly report that both documents were reviewed and no update was necessary. Documentation updates needed to prevent false guidance are an exception to otherwise narrow implementation scopes.
+For each of the three documents, explicitly report either its update or why
+review found no update necessary. Documentation corrections are an exception to otherwise narrow implementation scopes.
 
 ## Verification before completion
 
