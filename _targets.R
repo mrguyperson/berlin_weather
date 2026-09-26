@@ -108,11 +108,11 @@ list(
   ),
   tar_target(
     name = top_10_hottest,
-    command = get_top_10_list(filtered_data, type = "hottest")
+    command = get_top_10_list(filtered_data, reference_time, type = "hottest")
   ),
   tar_target(
     name = top_10_coldest,
-    command = get_top_10_list(filtered_data, type = "coldest")
+    command = get_top_10_list(filtered_data, reference_time, type = "coldest")
   ),
   tar_target(
     name = hottest_year,
