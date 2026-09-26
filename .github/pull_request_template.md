@@ -20,7 +20,11 @@
 
 ## Documentation
 
-<!-- Confirm README.md and AGENTS.md review where required; name updates or explain why none were needed. -->
+- [ ] README.md reviewed — note update or why none was needed below.
+- [ ] AGENTS.md reviewed — note update or why none was needed below.
+- [ ] ROADMAP.md reviewed — note update or why none was needed below.
+
+<!-- Explain each document's update/no-change decision. -->
 
 ## Reviewer notes
 

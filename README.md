@@ -6,6 +6,9 @@ Berlin Weather is an automated R and Quarto dashboard that compares recent weath
 
 The dashboard shows each completed current-year day's observed minimum-to-maximum temperature range against long-term calendar-date distributions of pooled hourly temperatures. It also summarizes how the latest completed day's mean compares with the same calendar date historically, identifies new heat and cold records, lists extreme observed temperatures, and reports the hottest year, coldest year, and long-run annual temperature trend. Leap days are excluded so calendar days align consistently across years.
 
+For planned development phases—from richer temperature interaction to precipitation
+and curated multi-city views—see [ROADMAP.md](ROADMAP.md).
+
 ## Why this project exists
 
 Most weather products answer “what is it now?” or “what happens next?” They do not necessarily explain whether a measurement is ordinary for this point in the year. This dashboard adds that context by comparing Berlin's recent conditions with more than eight decades of hourly observations.
@@ -125,15 +128,21 @@ If the locked R environment is already active, the direct equivalent is:
 Rscript -e 'testthat::test_dir("tests/testthat")'
 ```
 
+CI measures line coverage of reusable R logic under `R/` using the offline
+tests and `covr`. Run `Rscript scripts/check_coverage.R` in the canonical image
+to see the measured percentage and committed minimum. That minimum is a ratchet:
+raise it as sustained test coverage improves, and do not lower it merely to
+make a change pass. Line coverage complements, rather than replaces, behavioral tests.
+
 ## Automation and publication
 
 The workflows under `.github/workflows/` keep distinct responsibilities:
 
-- **Tests:** pull requests and pushes to `main` build the proposed Dockerfile, check documentation paths, and run the offline test suite inside that image.
+- **Tests:** pull requests and pushes to `main` build the proposed Dockerfile, check documentation paths, and run the offline test suite and R line-coverage floor inside that image.
 - **Canonical image:** the image workflow prepares current `main` revisions with commit-specific `sha-<commit>` images, using Buildx caching to reuse unchanged environment layers. A build for a superseded revision may be canceled; `latest` remains a moving convenience tag.
 - **Dashboard publication:** every dashboard revision that is published runs in its matching `sha-<commit>` image, never `latest`. Publication begins only after image preparation succeeds, and freshness checks prevent a superseded revision from being deployed.
 - **Historical-state reuse:** the publication workflow caches selected `{targets}` objects and metadata using the calendar year plus hashes of pipeline, function, and Docker inputs, avoiding unnecessary retrieval and recomputation when that state remains valid.
-- **Documentation integrity:** the test workflow runs `scripts/check_doc_paths.py` to catch stale repository-path references in `README.md` and `AGENTS.md`.
+- **Documentation integrity:** the test workflow runs `scripts/check_doc_paths.py` to catch stale repository-path references in `README.md`, `AGENTS.md`, and `ROADMAP.md`.
 
 ## Repository structure
 
@@ -149,7 +158,8 @@ The workflows under `.github/workflows/` keep distinct responsibilities:
 ├── Dockerfile               # Canonical runtime/build environment
 ├── DESCRIPTION              # Direct R dependencies
 ├── renv.lock                # Exact R dependency resolution
-└── AGENTS.md                # Repository guidance for coding agents
+├── AGENTS.md                # Repository guidance for coding agents
+└── ROADMAP.md               # Phase-level project direction
 ```
 
 Generated state under `_targets/` is managed by `{targets}` and should not be edited directly.

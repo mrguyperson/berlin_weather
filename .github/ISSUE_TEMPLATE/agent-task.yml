@@ -2,6 +2,13 @@ name: Agent task
 description: Define a scoped task with enough context for implementation and review.
 labels: ["agent-task"]
 body:
+  - type: markdown
+    attributes:
+      value: >
+        For non-trivial tasks, read AGENTS.md, README.md, ROADMAP.md, and this
+        task contract before planning or editing. Re-review all three documents
+        before completion and report separately what changed or why no update
+        was needed. See AGENTS.md for the repository-wide workflow.
   - type: textarea
     id: task
     attributes:

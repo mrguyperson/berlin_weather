@@ -38,3 +38,11 @@ jobs:
             --workdir /project \
             berlin-weather-test \
             Rscript -e 'testthat::test_dir("tests/testthat")'
+
+      - name: Check R line coverage
+        run: |
+          docker run --rm \
+            --mount type=bind,src="${{ github.workspace }}",dst=/project,readonly \
+            --workdir /project \
+            berlin-weather-test \
+            Rscript scripts/check_coverage.R

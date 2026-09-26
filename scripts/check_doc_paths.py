@@ -7,7 +7,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCUMENTS = ("README.md", "AGENTS.md")
+DOCUMENTS = ("README.md", "AGENTS.md", "ROADMAP.md")
 PATH_PREFIXES = (
     ".devcontainer/",
     ".github/",
@@ -23,6 +23,7 @@ ROOT_PATHS = {
     "DESCRIPTION",
     "Dockerfile",
     "README.md",
+    "ROADMAP.md",
     "_quarto.yml",
     "_targets.R",
     "index.qmd",
