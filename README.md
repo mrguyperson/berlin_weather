@@ -43,6 +43,8 @@ After ingestion, the pipeline removes incomplete rows and leap-day observations.
 
 Annual means, hottest/coldest-year rankings, and the long-term trend use only historical years with at least 364 structurally complete dates out of the 365 expected non-leap dates. Means include only complete days; missing and incomplete dates both count against coverage. This is a project data-quality rule, not a universal climatological standard. The current year is excluded, and fitting the trend requires at least two eligible years.
 
+The top-10 hottest and coldest lists rank hourly maxima and minima only for structurally complete days that have ended in Europe/Berlin, including completed current-year days. Ties favor the earlier date, and each list contains at most ten dates.
+
 ## Reproducible environment
 
 The environment is described at complementary levels:

@@ -247,23 +247,28 @@ filter_complete_historical_dates <- function(historical_data) {
         filter(as.character(date) %in% complete_date_names)
 }
 
+has_berlin_day_ended <- function(date, reference_time) {
+    if (length(date) == 0) {
+        return(logical())
+    }
+    next_day_start <- as.POSIXct(
+        paste(date + lubridate::days(1), "00:00:00"),
+        tz = "Europe/Berlin"
+    )
+    reference_time >= next_day_start
+}
+
 remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%
         max()
-
-    timezone <- "Europe/Berlin"
-    next_day_start <- as.POSIXct(
-        paste(last_date + lubridate::days(1), "00:00:00"),
-        tz = timezone
-    )
 
     final_date_observations <- filtered_data %>%
         filter(date == last_date)
     has_expected_hours <- has_complete_openmeteo_hours(
         final_date_observations
     )
-    day_has_ended <- reference_time >= next_day_start
+    day_has_ended <- has_berlin_day_ended(last_date, reference_time)
 
     if(!day_has_ended || !has_expected_hours) {
         filtered_data %>%
@@ -555,7 +560,14 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
 
 
 
-get_top_10_list <- function(filtered_data, type = "hottest") {
+get_top_10_list <- function(filtered_data, reference_time, type = "hottest") {
+    filtered_data <- filtered_data %>%
+        filter(has_berlin_day_ended(date, reference_time)) %>%
+        filter_complete_historical_dates()
+
+    if (nrow(filtered_data) == 0) {
+        return(tibble(date = as.Date(character()), temperature = double()))
+    }
 
     if(type == "hottest") {
         filtered_data %>%
@@ -563,7 +575,7 @@ get_top_10_list <- function(filtered_data, type = "hottest") {
                 temperature = max(hourly_temperature_2m),
                 .by = date,
             ) %>%
-            arrange(-temperature) %>%
+            arrange(-temperature, date) %>%
             head(10)
     } else {
         filtered_data %>%
@@ -571,7 +583,7 @@ get_top_10_list <- function(filtered_data, type = "hottest") {
                 temperature = min(hourly_temperature_2m),
                 .by = date,
             ) %>%
-            arrange(temperature) %>%
+            arrange(temperature, date) %>%
             head(10)
     }
 }
