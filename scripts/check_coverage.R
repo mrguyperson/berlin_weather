@@ -1,10 +1,11 @@
 #!/usr/bin/env Rscript
 
-# Current-main baseline: 60.55226824%. Floor rounded down to 0.1 percentage point.
+# Reviewed issue #38 measurement: 62.33%. Floor rounded down to 0.1 percentage point.
 # Raise the floor through reviewed changes; do not lower it merely to pass CI.
-minimum_coverage <- 60.5
+minimum_coverage <- 62.3
 
 source_files <- list.files("R", pattern = "[.]R$", full.names = TRUE, recursive = TRUE)
+helper_files <- list.files("tests/testthat", pattern = "^helper-.*[.]R$", full.names = TRUE)
 test_files <- list.files("tests/testthat", pattern = "^test-.*[.]R$", full.names = TRUE)
 
 if (length(source_files) == 0L || length(test_files) == 0L) {
@@ -13,7 +14,7 @@ if (length(source_files) == 0L || length(test_files) == 0L) {
 
 coverage <- covr::file_coverage(
     source_files = source_files,
-    test_files = test_files
+    test_files = c(helper_files, test_files)
 )
 measured_coverage <- covr::percent_coverage(coverage)
 
