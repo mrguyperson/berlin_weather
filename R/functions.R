@@ -258,6 +258,42 @@ has_berlin_day_ended <- function(date, reference_time) {
     reference_time >= next_day_start
 }
 
+make_daily_temperature_data <- function(filtered_data, reference_time) {
+    eligible_data <- filtered_data %>%
+        filter(has_berlin_day_ended(date, reference_time)) %>%
+        filter_complete_historical_dates()
+
+    if (nrow(eligible_data) == 0) {
+        return(tibble(
+            date = as.Date(character()),
+            year = integer(),
+            month = integer(),
+            mday = integer(),
+            temperature_min = double(),
+            temperature_mean = double(),
+            temperature_max = double()
+        ))
+    }
+
+    eligible_data %>%
+        summarize(
+            temperature_min = as.double(min(hourly_temperature_2m)),
+            temperature_mean = mean(hourly_temperature_2m),
+            temperature_max = as.double(max(hourly_temperature_2m)),
+            .by = date
+        ) %>%
+        mutate(
+            year = as.integer(year(date)),
+            month = as.integer(month(date)),
+            mday = as.integer(mday(date))
+        ) %>%
+        select(
+            date, year, month, mday,
+            temperature_min, temperature_mean, temperature_max
+        ) %>%
+        arrange(date)
+}
+
 remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%

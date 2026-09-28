@@ -83,6 +83,10 @@ list(
     command = filter_data(validated_raw_data)
   ),
   tar_target(
+    name = daily_temperature_data,
+    command = make_daily_temperature_data(filtered_data, reference_time)
+  ),
+  tar_target(
     name = historical_data,
     command = make_historical_data(filtered_data, today)
   ),
