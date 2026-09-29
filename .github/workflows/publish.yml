@@ -178,10 +178,15 @@ jobs:
 
           echo "should_publish=true" >> "$GITHUB_OUTPUT"
 
+      - name: Trust checked-out workspace for publication
+        if: steps.final-current.outputs.should_publish == 'true'
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Publish dashboard
         if: steps.final-current.outputs.should_publish == 'true'
         uses: quarto-dev/quarto-actions/publish@v2
         with:
           target: quarto-pub
+          path: index.qmd
           QUARTO_PUB_AUTH_TOKEN: ${{ secrets.QUARTO_PUB_AUTH_TOKEN }}
           
