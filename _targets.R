@@ -87,6 +87,12 @@ list(
     command = make_daily_temperature_data(filtered_data, reference_time)
   ),
   tar_target(
+    name = historical_daily_extreme_context,
+    command = make_historical_daily_extreme_context(
+      daily_temperature_data, reference_time
+    )
+  ),
+  tar_target(
     name = historical_data,
     command = make_historical_data(filtered_data, today)
   ),
