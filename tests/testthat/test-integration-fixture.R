@@ -9,6 +9,10 @@ run_compact_analysis <- function(fixture) {
     current_raw <- validate_raw_data(fixture$current_raw)
     filtered <- filter_data(combine_raw_data(historical_raw, current_raw))
     historical <- make_historical_data(filtered, fixture$today)
+    daily <- make_daily_temperature_data(filtered, fixture$reference_time)
+    daily_context <- make_historical_daily_extreme_context(
+        daily, fixture$reference_time
+    )
     calendar <- add_calendar_to_historical(
         make_calendar(fixture$today), historical
     )
@@ -17,6 +21,7 @@ run_compact_analysis <- function(fixture) {
     list(
         filtered = filtered,
         historical = historical,
+        daily_context = daily_context,
         calendar = calendar,
         current = current,
         latest = summarize_latest_day(filtered, current),
@@ -83,6 +88,13 @@ test_that("compact offline fixture exercises the production analysis sequence", 
     expect_equal(c(jan2$min, jan2$avg, jan2$max), c(0, 2, 4))
     expect_equal(c(sep18$min, sep18$avg, sep18$max), c(0, 2, 4))
     expect_equal(nrow(result$calendar), 365)
+    ordinary_context <- filter(result$daily_context,
+        month == 1L, mday == 3L
+    )
+    expect_equal(ordinary_context$measure, c("daily_max", "daily_min"))
+    expect_equal(ordinary_context$n_years, c(3L, 3L))
+    expect_equal(ordinary_context$median, c(2, 2))
+    expect_equal(nrow(result$daily_context), 730)
 
     expect_equal(result$current$date, as.Date(c(
         "2025-09-16", "2025-09-17", "2025-09-18"
@@ -130,7 +142,7 @@ test_that("compact analysis is invariant to source row order", {
     reversed <- run_compact_analysis(fixture)
 
     for (component in c(
-        "calendar", "current", "latest", "coverage", "annual",
+        "calendar", "daily_context", "current", "latest", "coverage", "annual",
         "hottest_year", "coldest_year", "slope", "hottest_days",
         "coldest_days", "records"
     )) {

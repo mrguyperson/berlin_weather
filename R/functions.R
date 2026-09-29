@@ -294,6 +294,51 @@ make_daily_temperature_data <- function(filtered_data, reference_time) {
         arrange(date)
 }
 
+make_historical_daily_extreme_context <- function(daily_temperature_data, reference_time) {
+    current_year <- as.integer(lubridate::year(lubridate::with_tz(
+        reference_time, "Europe/Berlin"
+    )))
+    historical_days <- daily_temperature_data %>%
+        filter(year < current_year)
+
+    if (nrow(historical_days) == 0) {
+        return(tibble(
+            month = integer(),
+            mday = integer(),
+            measure = character(),
+            n_years = integer(),
+            minimum = double(),
+            p05 = double(),
+            p25 = double(),
+            median = double(),
+            p75 = double(),
+            p95 = double(),
+            maximum = double()
+        ))
+    }
+
+    bind_rows(
+        transmute(historical_days,
+            month, mday, measure = "daily_min", value = temperature_min
+        ),
+        transmute(historical_days,
+            month, mday, measure = "daily_max", value = temperature_max
+        )
+    ) %>%
+        summarize(
+            n_years = as.integer(n()),
+            minimum = as.double(min(value)),
+            p05 = as.double(quantile(value, probs = 0.05, type = 7, names = FALSE)),
+            p25 = as.double(quantile(value, probs = 0.25, type = 7, names = FALSE)),
+            median = as.double(quantile(value, probs = 0.5, type = 7, names = FALSE)),
+            p75 = as.double(quantile(value, probs = 0.75, type = 7, names = FALSE)),
+            p95 = as.double(quantile(value, probs = 0.95, type = 7, names = FALSE)),
+            maximum = as.double(max(value)),
+            .by = c(month, mday, measure)
+        ) %>%
+        arrange(month, mday, measure)
+}
+
 remove_incomplete_date <- function(filtered_data, reference_time) {
     last_date <- filtered_data %>%
         pull(date) %>%
