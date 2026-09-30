@@ -641,6 +641,97 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
 
 
 
+make_interactive_temperature_plot <- function(history_with_calendar, this_year, new_records) {
+    history_with_calendar <- arrange(history_with_calendar, date)
+    this_year <- arrange(this_year, date)
+    new_records <- arrange(new_records, date)
+
+    boundaries <- c("min", "x5", "x25", "x75", "x95", "max")
+    band_colors <- c("#2c7bb6", "#abd9e9", "#ffffbf", "#fdae61", "#d7191c")
+    band_labels <- c(
+        "Lowest to 5th percentile", "5th to 25th percentile",
+        "25th to 75th percentile", "75th to 95th percentile",
+        "95th percentile to highest"
+    )
+
+    figure <- plotly::plot_ly()
+    figure <- plotly::add_trace(
+        figure,
+        x = history_with_calendar$date,
+        y = history_with_calendar[[boundaries[[1]]]],
+        type = "scatter", mode = "lines",
+        line = list(color = "rgba(0,0,0,0)", width = 0),
+        name = "Historical minimum", showlegend = FALSE, hoverinfo = "skip"
+    )
+    for (band in seq_along(band_colors)) {
+        figure <- plotly::add_trace(
+            figure,
+            x = history_with_calendar$date,
+            y = history_with_calendar[[boundaries[[band + 1L]]]],
+            type = "scatter", mode = "lines", fill = "tonexty",
+            fillcolor = band_colors[[band]],
+            line = list(color = "grey30", width = 0.3),
+            name = band_labels[[band]], hoverinfo = "skip"
+        )
+    }
+
+    figure <- plotly::add_trace(
+        figure,
+        x = history_with_calendar$date, y = history_with_calendar$avg,
+        type = "scatter", mode = "lines",
+        line = list(color = "goldenrod", width = 2),
+        name = "Historical pooled-hourly mean", hoverinfo = "x+y"
+    )
+
+    if (nrow(this_year) > 0L) {
+        ranges <- tibble(
+            date = rep(this_year$date, each = 3L),
+            temperature = as.vector(rbind(
+                this_year$this_year_min, this_year$this_year_max, NA_real_
+            ))
+        )
+        figure <- plotly::add_trace(
+            figure,
+            x = ranges$date, y = ranges$temperature,
+            type = "scatter", mode = "lines", connectgaps = FALSE,
+            line = list(color = "black", width = 2),
+            name = "Current-year daily range", hoverinfo = "skip"
+        )
+    }
+
+    heat_records <- filter(new_records, new_record == "heat")
+    if (nrow(heat_records) > 0L) {
+        figure <- plotly::add_trace(
+            figure,
+            x = heat_records$date, y = heat_records$this_year_max,
+            type = "scatter", mode = "markers",
+            marker = list(color = "firebrick", size = 8,
+                          line = list(color = "black", width = 1)),
+            name = "New heat record", hoverinfo = "x+y"
+        )
+    }
+
+    cold_records <- filter(new_records, new_record == "cold")
+    if (nrow(cold_records) > 0L) {
+        figure <- plotly::add_trace(
+            figure,
+            x = cold_records$date, y = cold_records$this_year_min,
+            type = "scatter", mode = "markers",
+            marker = list(color = "dodgerblue", size = 8,
+                          line = list(color = "black", width = 1)),
+            name = "New cold record", hoverinfo = "x+y"
+        )
+    }
+
+    plotly::layout(
+        figure,
+        xaxis = list(type = "date", dtick = "M1", tickformat = "%b", title = ""),
+        yaxis = list(title = "", ticksuffix = "°C"),
+        legend = list(x = 1.02, y = 1, font = list(size = 10)),
+        margin = list(l = 45, r = 180, t = 20, b = 40)
+    )
+}
+
 get_top_10_list <- function(filtered_data, reference_time, type = "hottest") {
     filtered_data <- filtered_data %>%
         filter(has_berlin_day_ended(date, reference_time)) %>%

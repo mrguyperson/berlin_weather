@@ -55,6 +55,7 @@ RUN wget -q \
 
 ENV RENV_PATHS_LIBRARY=/opt/renv/library
 ENV RENV_CONFIG_CACHE_SYMLINKS=FALSE
+ENV CRAN=https://cloud.r-project.org
 
 WORKDIR /project
 

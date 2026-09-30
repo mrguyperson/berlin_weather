@@ -16,6 +16,7 @@ Imports:
     leaflet,
     lubridate,
     openmeteo,
+    plotly,
     purrr,
     scales,
     showtext,
