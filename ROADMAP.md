@@ -4,8 +4,9 @@
 
 Berlin Weather should make current conditions intelligible against a long,
 carefully validated historical record. The near-term product remains a useful
-static Quarto dashboard; richer interaction, additional weather variables, and
-more locations should grow from tested data models rather than bypass them.
+statically published Quarto dashboard with an interactive temperature figure;
+richer interaction, additional weather variables, and more locations should
+grow from tested data models rather than bypass them.
 
 `main` must remain deployable and visually usable after every merged step.
 Replacement architecture should normally be built and validated underneath
