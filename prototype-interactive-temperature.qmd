@@ -5,6 +5,8 @@ format: html
 
 This standalone review document renders the same interactive Plotly figure used by the production dashboard. It uses the existing pooled-hourly historical bands and mean, completed current-year daily ranges, and heat/cold record markers.
 
+Current-day hover details use a separate historical distribution of daily lows and daily highs; the visible colored bands continue to summarize pooled hourly observations.
+
 The native Plotly version keeps a concise legend. A trial `ggplotly()` conversion retained the data layers but dropped the static plot's hand-placed legend labels and produced unnamed traces and numeric date hover labels.
 
 ```{r}
@@ -16,6 +18,10 @@ source("R/functions.R")
 tar_load(history_with_calendar)
 tar_load(this_year)
 tar_load(new_records)
+tar_load(historical_daily_extreme_context)
 
-make_interactive_temperature_plot(history_with_calendar, this_year, new_records)
+make_interactive_temperature_plot(
+    history_with_calendar, this_year, new_records,
+    historical_daily_extreme_context
+)
 ```

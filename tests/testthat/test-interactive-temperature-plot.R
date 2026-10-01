@@ -11,6 +11,7 @@ fixture_plot_inputs <- function() {
         validate_raw_data(fixture$current_raw)
     ))
     historical <- make_historical_data(filtered, fixture$today)
+    daily <- make_daily_temperature_data(filtered, fixture$reference_time)
     calendar <- add_calendar_to_historical(
         make_calendar(fixture$today), historical
     )
@@ -18,7 +19,10 @@ fixture_plot_inputs <- function() {
     list(
         historical = calendar,
         current = current,
-        records = get_new_records(calendar, current)
+        records = get_new_records(calendar, current),
+        daily_context = make_historical_daily_extreme_context(
+            daily, fixture$reference_time
+        )
     )
 }
 
@@ -38,7 +42,8 @@ named_plot_trace <- function(traces, name) {
 test_that("interactive bands and mean retain the pooled-hourly fixture values", {
     inputs <- fixture_plot_inputs()
     widget <- make_interactive_temperature_plot(
-        inputs$historical, inputs$current, inputs$records
+        inputs$historical, inputs$current, inputs$records,
+        inputs$daily_context
     )
     expect_s3_class(widget, "plotly")
     expect_s3_class(widget, "htmlwidget")
@@ -83,7 +88,8 @@ test_that("interactive bands and mean retain the pooled-hourly fixture values", 
 test_that("interactive daily ranges and record coordinates match the fixture", {
     inputs <- fixture_plot_inputs()
     traces <- plotly::plotly_build(make_interactive_temperature_plot(
-        inputs$historical, inputs$current, inputs$records
+        inputs$historical, inputs$current, inputs$records,
+        inputs$daily_context
     ))$x$data
 
     ranges <- named_plot_trace(traces, "Current-year daily range")
@@ -117,7 +123,8 @@ test_that("interactive values are stable under input row reordering", {
     reversed <- lapply(inputs, function(data) data[rev(seq_len(nrow(data))), ])
     build <- function(data) plotly::plotly_build(
         make_interactive_temperature_plot(
-            data$historical, data$current, data$records
+            data$historical, data$current, data$records,
+            data$daily_context
         )
     )$x$data
     normal <- build(inputs)
@@ -127,7 +134,9 @@ test_that("interactive values are stable under input row reordering", {
         name = trace$name,
         x = plot_dates(trace$x),
         y = as.numeric(trace$y),
-        fillcolor = trace$fillcolor
+        fillcolor = trace$fillcolor,
+        text = unname(as.character(trace$text)),
+        hovertemplate = trace$hovertemplate
     ))
     expect_equal(normalize(reordered), normalize(normal))
 })
@@ -137,10 +146,172 @@ test_that("absent current-year and record rows create no fabricated marks", {
     traces <- plotly::plotly_build(make_interactive_temperature_plot(
         inputs$historical,
         inputs$current[0, ],
-        inputs$records[0, ]
+        inputs$records[0, ],
+        inputs$daily_context
     ))$x$data
     names <- vapply(traces, function(trace) trace$name, character(1))
     expect_false(any(c(
         "Current-year daily range", "New heat record", "New cold record"
     ) %in% names))
+})
+
+test_that("hover preparation joins separate daily extremes by calendar date", {
+    inputs <- fixture_plot_inputs()
+    hover <- prepare_temperature_hover_data(
+        inputs$current, inputs$daily_context
+    )
+
+    expect_equal(hover$date, inputs$current$date)
+    expect_equal(hover$this_year_min, c(-20, 0, 0))
+    expect_equal(hover$this_year_max, c(4, 20, 20))
+    expect_equal(hover$low_n_years, rep(3L, 3))
+    expect_equal(hover$high_n_years, rep(3L, 3))
+    for (column in c("low_p05", "high_p05")) {
+        expect_equal(as.numeric(hover[[column]]), rep(0.2, 3), info = column)
+    }
+    for (column in c("low_median", "high_median")) {
+        expect_equal(as.numeric(hover[[column]]), rep(2, 3), info = column)
+    }
+    for (column in c("low_p95", "high_p95")) {
+        expect_equal(as.numeric(hover[[column]]), rep(3.8, 3), info = column)
+    }
+    expect_true(all(hover$context_available))
+
+    reversed <- prepare_temperature_hover_data(
+        inputs$current[rev(seq_len(nrow(inputs$current))), ],
+        inputs$daily_context[rev(seq_len(nrow(inputs$daily_context))), ]
+    )
+    expect_equal(reversed, hover)
+})
+
+test_that("hover preparation retains days with missing or unusable context", {
+    inputs <- fixture_plot_inputs()
+    missing <- filter(inputs$daily_context,
+        !(month == 9L & mday == 17L),
+        !(month == 9L & mday == 18L & measure == "daily_max")
+    )
+    missing$p05[missing$month == 9L & missing$mday == 16L] <- NaN
+    hover <- prepare_temperature_hover_data(inputs$current, missing)
+
+    expect_equal(hover$date, inputs$current$date)
+    expect_equal(hover$this_year_min, inputs$current$this_year_min)
+    expect_equal(hover$this_year_max, inputs$current$this_year_max)
+    expect_false(any(hover$context_available))
+    expect_true(is.na(hover$low_median[[2]]))
+    expect_true(is.na(hover$high_median[[3]]))
+
+    empty <- prepare_temperature_hover_data(
+        inputs$current[0, ], inputs$daily_context[0, ]
+    )
+    expect_equal(nrow(empty), 0L)
+    expect_s3_class(empty$date, "Date")
+    expect_type(empty$low_n_years, "integer")
+    expect_type(empty$high_p95, "double")
+    expect_type(empty$context_available, "logical")
+    expect_equal(format_hover_temperature(c(NA_real_, NaN, Inf, -Inf, 1.24, -0.04)),
+        c(rep("unavailable", 4), "1.2 °C", "0.0 °C"))
+})
+
+test_that("daily-range hover uses fixture values and labels daily context", {
+    inputs <- fixture_plot_inputs()
+    traces <- plotly::plotly_build(make_interactive_temperature_plot(
+        inputs$historical, inputs$current, inputs$records,
+        inputs$daily_context
+    ))$x$data
+    ranges <- named_plot_trace(traces, "Current-year daily range")
+    dates <- plot_dates(ranges$x)
+    first_day <- unique(as.character(ranges$text[which(
+        dates == as.Date("2025-09-16")
+    )]))
+
+    expect_identical(first_day, paste0(
+        "16 Sep 2025<br>Daily low: -20.0 °C",
+        "<br>Historical daily lows: median 2.0 °C (5–95%: 0.2–3.8 °C)",
+        "<br>Daily high: 4.0 °C",
+        "<br>Historical daily highs: median 2.0 °C (5–95%: 0.2–3.8 °C)",
+        "<br>Historical context: 3 prior years"
+    ))
+    templates <- as.character(ranges$hovertemplate)
+    expect_true(any(!is.na(templates)))
+    expect_setequal(templates[!is.na(templates)],
+        "%{text}<extra></extra>")
+    expect_false(any(grepl("\\b(?:NA|NaN)\\b", as.character(ranges$text),
+        perl = TRUE)))
+    for (name in c(
+        "Historical minimum", "Lowest to 5th percentile",
+        "5th to 25th percentile", "25th to 75th percentile",
+        "75th to 95th percentile", "95th percentile to highest"
+    )) {
+        expect_true(all(as.character(named_plot_trace(traces, name)$hoverinfo)
+            == "skip"))
+    }
+})
+
+test_that("mean and record hover have formatted dates and temperatures", {
+    inputs <- fixture_plot_inputs()
+    traces <- plotly::plotly_build(make_interactive_temperature_plot(
+        inputs$historical, inputs$current, inputs$records,
+        inputs$daily_context
+    ))$x$data
+
+    mean <- named_plot_trace(traces, "Historical pooled-hourly mean")
+    jan2 <- which(plot_dates(mean$x) == as.Date("2025-01-02"))
+    expect_identical(as.character(mean$text[[jan2]]),
+        "2 Jan<br>Historical pooled-hourly mean: 2.0 °C")
+    expect_true(all(as.character(mean$hovertemplate) ==
+        "%{text}<extra></extra>"))
+
+    heat <- named_plot_trace(traces, "New heat record")
+    cold <- named_plot_trace(traces, "New cold record")
+    expect_identical(as.character(heat$text[[1]]),
+        "17 Sep 2025<br>New heat record: 20.0 °C")
+    expect_identical(as.character(cold$text[[1]]),
+        "16 Sep 2025<br>New cold record: -20.0 °C")
+    expect_true(all(as.character(heat$hovertemplate) ==
+        "%{text}<extra></extra>"))
+    expect_true(all(as.character(cold$hovertemplate) ==
+        "%{text}<extra></extra>"))
+    for (trace in list(mean, heat, cold)) {
+        expect_false(any(grepl("\\b(?:NA|NaN)\\b", as.character(trace$text),
+            perl = TRUE)))
+    }
+})
+
+test_that("missing daily context produces an explicit fallback hover", {
+    inputs <- fixture_plot_inputs()
+    context <- filter(inputs$daily_context,
+        !(month == 9L & mday == 17L)
+    )
+    traces <- plotly::plotly_build(make_interactive_temperature_plot(
+        inputs$historical, inputs$current, inputs$records, context
+    ))$x$data
+    ranges <- named_plot_trace(traces, "Current-year daily range")
+    dates <- plot_dates(ranges$x)
+    missing_hover <- unique(as.character(ranges$text[which(
+        dates == as.Date("2025-09-17")
+    )]))
+    expect_identical(missing_hover, paste0(
+        "17 Sep 2025<br>Daily low: 0.0 °C",
+        "<br>Daily high: 20.0 °C",
+        "<br>Historical context unavailable"
+    ))
+    expect_false(grepl("\\b(?:NA|NaN)\\b", missing_hover, perl = TRUE))
+    expect_equal(as.numeric(ranges$y)[which(
+        dates == as.Date("2025-09-17")
+    )], c(0, 20))
+
+    empty_context_traces <- plotly::plotly_build(
+        make_interactive_temperature_plot(
+            inputs$historical, inputs$current, inputs$records,
+            inputs$daily_context[0, ]
+        )
+    )$x$data
+    all_fallback <- named_plot_trace(
+        empty_context_traces, "Current-year daily range"
+    )$text
+    all_fallback <- as.character(all_fallback)
+    all_fallback <- all_fallback[!is.na(all_fallback) & nzchar(all_fallback)]
+    expect_length(unique(all_fallback), nrow(inputs$current))
+    expect_true(all(grepl("Historical context unavailable",
+        unique(all_fallback))))
 })

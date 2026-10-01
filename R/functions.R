@@ -641,10 +641,83 @@ make_plot <- function(history_with_calendar, this_year, heat_records, city, star
 
 
 
-make_interactive_temperature_plot <- function(history_with_calendar, this_year, new_records) {
+prepare_temperature_hover_data <- function(this_year, historical_daily_extreme_context) {
+    current <- this_year %>%
+        transmute(
+            date, this_year_min, this_year_max,
+            month = as.integer(lubridate::month(date)),
+            mday = as.integer(lubridate::mday(date))
+        )
+    daily_lows <- historical_daily_extreme_context %>%
+        filter(measure == "daily_min") %>%
+        select(
+            month, mday, low_n_years = n_years,
+            low_p05 = p05, low_median = median, low_p95 = p95
+        )
+    daily_highs <- historical_daily_extreme_context %>%
+        filter(measure == "daily_max") %>%
+        select(
+            month, mday, high_n_years = n_years,
+            high_p05 = p05, high_median = median, high_p95 = p95
+        )
+
+    current %>%
+        left_join(daily_lows, by = join_by(month, mday), relationship = "many-to-one") %>%
+        left_join(daily_highs, by = join_by(month, mday), relationship = "many-to-one") %>%
+        mutate(context_available =
+            !is.na(low_n_years) & !is.na(high_n_years) &
+            low_n_years > 0L & low_n_years == high_n_years &
+            is.finite(low_p05) & is.finite(low_median) & is.finite(low_p95) &
+            is.finite(high_p05) & is.finite(high_median) & is.finite(high_p95)
+        ) %>%
+        select(-month, -mday) %>%
+        arrange(date)
+}
+
+format_hover_temperature <- function(value) {
+    formatted <- rep("unavailable", length(value))
+    valid <- is.finite(value)
+    rounded <- round(value[valid], digits = 1L)
+    rounded[rounded == 0] <- 0
+    formatted[valid] <- sprintf("%.1f °C", rounded)
+    formatted
+}
+
+make_daily_range_hover_text <- function(hover_data) {
+    dates <- paste(lubridate::day(hover_data$date), format(hover_data$date, "%b %Y"))
+    lows <- format_hover_temperature(hover_data$this_year_min)
+    highs <- format_hover_temperature(hover_data$this_year_max)
+    text <- paste0(
+        dates, "<br>Daily low: ", lows,
+        "<br>Daily high: ", highs,
+        "<br>Historical context unavailable"
+    )
+    available <- which(hover_data$context_available)
+    text[available] <- paste0(
+        dates[available], "<br>Daily low: ", lows[available],
+        "<br>Historical daily lows: median ",
+        format_hover_temperature(hover_data$low_median[available]),
+        " (5–95%: ", sprintf("%.1f–%.1f °C",
+            hover_data$low_p05[available], hover_data$low_p95[available]), ")",
+        "<br>Daily high: ", highs[available],
+        "<br>Historical daily highs: median ",
+        format_hover_temperature(hover_data$high_median[available]),
+        " (5–95%: ", sprintf("%.1f–%.1f °C",
+            hover_data$high_p05[available], hover_data$high_p95[available]), ")",
+        "<br>Historical context: ", hover_data$low_n_years[available],
+        " prior years"
+    )
+    text
+}
+
+make_interactive_temperature_plot <- function(history_with_calendar, this_year, new_records,
+                                              historical_daily_extreme_context) {
     history_with_calendar <- arrange(history_with_calendar, date)
     this_year <- arrange(this_year, date)
     new_records <- arrange(new_records, date)
+    hover_data <- prepare_temperature_hover_data(
+        this_year, historical_daily_extreme_context
+    )
 
     boundaries <- c("min", "x5", "x25", "x75", "x95", "max")
     band_colors <- c("#2c7bb6", "#abd9e9", "#ffffbf", "#fdae61", "#d7191c")
@@ -680,22 +753,32 @@ make_interactive_temperature_plot <- function(history_with_calendar, this_year, 
         x = history_with_calendar$date, y = history_with_calendar$avg,
         type = "scatter", mode = "lines",
         line = list(color = "goldenrod", width = 2),
-        name = "Historical pooled-hourly mean", hoverinfo = "x+y"
+        name = "Historical pooled-hourly mean",
+        text = paste0(
+            lubridate::day(history_with_calendar$date), " ",
+            format(history_with_calendar$date, "%b"),
+            "<br>Historical pooled-hourly mean: ",
+            format_hover_temperature(history_with_calendar$avg)
+        ),
+        hovertemplate = "%{text}<extra></extra>"
     )
 
     if (nrow(this_year) > 0L) {
         ranges <- tibble(
-            date = rep(this_year$date, each = 3L),
+            date = rep(hover_data$date, each = 3L),
             temperature = as.vector(rbind(
-                this_year$this_year_min, this_year$this_year_max, NA_real_
-            ))
+                hover_data$this_year_min, hover_data$this_year_max, NA_real_
+            )),
+            hover_text = rep(make_daily_range_hover_text(hover_data), each = 3L)
         )
+        ranges$hover_text[seq(3L, nrow(ranges), by = 3L)] <- ""
         figure <- plotly::add_trace(
             figure,
             x = ranges$date, y = ranges$temperature,
             type = "scatter", mode = "lines", connectgaps = FALSE,
             line = list(color = "black", width = 2),
-            name = "Current-year daily range", hoverinfo = "skip"
+            name = "Current-year daily range", text = ranges$hover_text,
+            hovertemplate = "%{text}<extra></extra>"
         )
     }
 
@@ -707,7 +790,14 @@ make_interactive_temperature_plot <- function(history_with_calendar, this_year, 
             type = "scatter", mode = "markers",
             marker = list(color = "firebrick", size = 8,
                           line = list(color = "black", width = 1)),
-            name = "New heat record", hoverinfo = "x+y"
+            name = "New heat record",
+            text = paste0(
+                lubridate::day(heat_records$date), " ",
+                format(heat_records$date, "%b %Y"),
+                "<br>New heat record: ",
+                format_hover_temperature(heat_records$this_year_max)
+            ),
+            hovertemplate = "%{text}<extra></extra>"
         )
     }
 
@@ -719,7 +809,14 @@ make_interactive_temperature_plot <- function(history_with_calendar, this_year, 
             type = "scatter", mode = "markers",
             marker = list(color = "dodgerblue", size = 8,
                           line = list(color = "black", width = 1)),
-            name = "New cold record", hoverinfo = "x+y"
+            name = "New cold record",
+            text = paste0(
+                lubridate::day(cold_records$date), " ",
+                format(cold_records$date, "%b %Y"),
+                "<br>New cold record: ",
+                format_hover_temperature(cold_records$this_year_min)
+            ),
+            hovertemplate = "%{text}<extra></extra>"
         )
     }
 
