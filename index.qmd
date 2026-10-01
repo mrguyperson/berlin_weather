@@ -32,6 +32,7 @@ source("R/functions.R")
 tar_load(history_with_calendar)
 tar_load(this_year)
 tar_load(new_records)
+tar_load(historical_daily_extreme_context)
 tar_load(city)
 tar_load(start_date)
 tar_load(today)
@@ -93,7 +94,10 @@ tar_load(top_10_coldest)
 #| label: average_daily_temp_fig
 #| fig-width: 8
 #| fig-asp: 0.35
-make_interactive_temperature_plot(history_with_calendar, this_year, new_records)
+make_interactive_temperature_plot(
+    history_with_calendar, this_year, new_records,
+    historical_daily_extreme_context
+)
 ```
 Historical bands and mean pool hourly temperatures observed on each calendar date across prior years; black marks show each completed day's minimum–maximum temperature this year.
 
