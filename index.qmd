@@ -93,7 +93,7 @@ tar_load(top_10_coldest)
 #| label: average_daily_temp_fig
 #| fig-width: 8
 #| fig-asp: 0.35
-make_plot(history_with_calendar, this_year, new_records, city, start_date, today)
+make_interactive_temperature_plot(history_with_calendar, this_year, new_records)
 ```
 Historical bands and mean pool hourly temperatures observed on each calendar date across prior years; black marks show each completed day's minimum–maximum temperature this year.
 

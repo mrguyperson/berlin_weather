@@ -44,7 +44,7 @@ After ingestion, the pipeline removes incomplete rows and leap-day observations.
 
 A separate, currently undisplayed analysis model summarizes historical daily minima and maxima from complete, ended days. For each calendar date, each eligible prior year contributes one daily minimum and one daily maximum to separate, equally weighted distributions. This daily-extreme context does not change the dashboard's pooled-hourly historical bands.
 
-`prototype-interactive-temperature.qmd` is a non-production Plotly prototype of the existing temperature figure. It reads the same pooled-hourly bands, mean, current-year daily ranges, and records from `{targets}`; the published dashboard still uses the static plot in `index.qmd`. After building the pipeline in the canonical container, render the prototype with `quarto render prototype-interactive-temperature.qmd` for review.
+The production temperature figure in `index.qmd` is an interactive Plotly widget embedded in the statically published Quarto dashboard. It reads the existing pooled-hourly bands, mean, current-year daily ranges, and records from `{targets}`. `prototype-interactive-temperature.qmd` remains a standalone review document for the same figure; after building the pipeline in the canonical container, render it with `quarto render prototype-interactive-temperature.qmd`.
 
 [`{targets}`](https://docs.ropensci.org/targets/) declares the dependencies between these steps, persists intermediate results, and rebuilds only targets whose inputs have changed. The daily GitHub Actions workflow restores target objects and metadata from a year- and source-sensitive cache. This allows the stable historical branch to be reused when its inputs are unchanged while the always-cued date and dependent current-year results update. Quarto then reads the completed targets store and renders the dashboard for publication to Quarto Pub.
 
@@ -159,7 +159,7 @@ The workflows under `.github/workflows/` keep distinct responsibilities:
 ├── scripts/                 # Repository maintenance checks
 ├── _targets.R               # Pipeline definition
 ├── index.qmd                # Quarto dashboard source
-├── prototype-interactive-temperature.qmd  # Non-production plot prototype
+├── prototype-interactive-temperature.qmd  # Standalone plot review document
 ├── Dockerfile               # Canonical runtime/build environment
 ├── DESCRIPTION              # Direct R dependencies
 ├── renv.lock                # Exact R dependency resolution

@@ -1,9 +1,9 @@
 ---
-title: "Interactive temperature plot prototype"
+title: "Interactive temperature plot review"
 format: html
 ---
 
-This development prototype uses the existing pooled-hourly historical bands and mean, completed current-year daily ranges, and heat/cold record markers. The production dashboard continues to use the static plot.
+This standalone review document renders the same interactive Plotly figure used by the production dashboard. It uses the existing pooled-hourly historical bands and mean, completed current-year daily ranges, and heat/cold record markers.
 
 The native Plotly version keeps a concise legend. A trial `ggplotly()` conversion retained the data layers but dropped the static plot's hand-placed legend labels and produced unnamed traces and numeric date hover labels.
 
