@@ -147,6 +147,17 @@ setting itself. Behavioral and code changes still need deterministic testing.
 
 The image workflow prepares current `main` revisions with commit-specific canonical images and the moving `weather-image:latest` convenience tag. Preserve the `push.branches` filter and the job-level `github.ref` guard so manual dispatch from a non-main ref cannot update canonical images. An in-progress build for a superseded `main` revision may be canceled.
 
+For explicitly allowlisted release-neutral documentation/process changes, the
+image workflow may verify and reuse the previous main revision's exact-SHA
+image manifest to create the current revision's SHA tag and update `latest`
+without a Docker rebuild. Unknown or release-affecting changes, failed reuse,
+and manual image dispatch use a real build. The publish workflow independently
+checks the build run's recorded previous-main and source SHAs, then skips
+immediate publication only for a verified release-neutral push range. Missing
+or invalid provenance defaults to publication;
+scheduled and manual publication still use current `main` and its exact-SHA
+image. Keep release classification separate from the PR test classifier.
+
 Every production dashboard revision that is published must use the canonical `sha-<commit>` image matching the explicitly checked-out source revision; do not use `weather-image:latest` for publication correctness.
 
 Use minimal GitHub Actions permissions appropriate to the task.
