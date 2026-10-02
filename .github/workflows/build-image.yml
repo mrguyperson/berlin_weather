@@ -20,6 +20,25 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Classify release change
+        id: change
+        env:
+          PREVIOUS_SHA: ${{ github.event.before }}
+        run: |
+          needs_release=true
+          if [ "$GITHUB_EVENT_NAME" = "push" ] &&
+             [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] &&
+             [ "$PREVIOUS_SHA" != "0000000000000000000000000000000000000000" ] &&
+             git cat-file -e "$PREVIOUS_SHA^{commit}" &&
+             git merge-base --is-ancestor "$PREVIOUS_SHA" "$GITHUB_SHA"; then
+            set -o pipefail
+            needs_release="$(git diff --name-only --no-renames -z "$PREVIOUS_SHA" "$GITHUB_SHA" -- | python3 scripts/classify_release_changes.py)" || needs_release=true
+          fi
+          echo "needs_release=$needs_release" >> "$GITHUB_OUTPUT"
+          echo "previous_sha=$PREVIOUS_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -31,7 +50,40 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Reuse previous canonical image
+        id: reuse
+        if: github.event_name == 'push' && steps.change.outputs.needs_release == 'false'
+        env:
+          PREVIOUS_SHA: ${{ steps.change.outputs.previous_sha }}
+        run: |
+          echo "reused=false" >> "$GITHUB_OUTPUT"
+          image_base="ghcr.io/${GITHUB_REPOSITORY_OWNER}/weather-image"
+          previous_image="$image_base:sha-$PREVIOUS_SHA"
+          current_image="$image_base:sha-$GITHUB_SHA"
+          latest_image="$image_base:latest"
+
+          set -o pipefail
+          source_digest="$(docker buildx imagetools inspect "$previous_image" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')" || source_digest=""
+          if [[ ! "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::notice::Previous canonical image is unavailable; building the current image."
+            exit 0
+          fi
+
+          if docker buildx imagetools create --prefer-index=false \
+               --tag "$current_image" --tag "$latest_image" \
+               "$image_base@$source_digest"; then
+            current_digest="$(docker buildx imagetools inspect "$current_image" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')" || current_digest=""
+            latest_digest="$(docker buildx imagetools inspect "$latest_image" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')" || latest_digest=""
+            if [ "$current_digest" = "$source_digest" ] &&
+               [ "$latest_digest" = "$source_digest" ]; then
+              echo "reused=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "::notice::Could not verify reused tags; building the current image."
+
       - name: Build and push image
+        if: steps.reuse.outputs.reused != 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -41,3 +93,20 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/weather-image:sha-${{ github.sha }}
           cache-from: type=gha,scope=weather-image
           cache-to: type=gha,mode=max,scope=weather-image
+
+      - name: Record source range for publication
+        continue-on-error: true
+        env:
+          PREVIOUS_SHA: ${{ github.event.before }}
+        run: |
+          python3 -c 'import json,os; print(json.dumps({"source_sha": os.environ["GITHUB_SHA"], "previous_sha": os.environ["PREVIOUS_SHA"], "event": os.environ["GITHUB_EVENT_NAME"]}))' \
+            > "$RUNNER_TEMP/release-provenance.json"
+
+      - name: Upload source range for publication
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-provenance
+          path: ${{ runner.temp }}/release-provenance.json
+          if-no-files-found: error
+          retention-days: 7

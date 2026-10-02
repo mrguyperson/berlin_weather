@@ -23,8 +23,8 @@ jobs:
       - name: Check documentation paths
         run: python3 scripts/check_doc_paths.py
 
-      - name: Test changed-path classifier
-        run: python3 -m unittest discover -s tests -p 'test_classify_pr_changes.py'
+      - name: Test changed-path classifiers
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
 
       - name: Classify changed paths
         id: changes
