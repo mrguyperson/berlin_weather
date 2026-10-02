@@ -137,7 +137,13 @@ Treat full `{targets}` and Quarto validation as network-dependent integration op
 
 Keep CI and production publishing concerns separate.
 
-The automated test workflow should test pull requests and `main`.
+The Tests workflow should run for every pull request as the normal pre-merge
+gate, keeping one stable job/check. Documentation-path and changed-path
+classifier checks run on every PR. Only explicitly allowlisted
+documentation/process-only changes may skip Docker, R tests, and coverage;
+unknown or mixed changes require the full suite. Repository rules must require
+the successful PR check before merge; the workflow does not enforce that
+setting itself. Behavioral and code changes still need deterministic testing.
 
 The image workflow prepares current `main` revisions with commit-specific canonical images and the moving `weather-image:latest` convenience tag. Preserve the `push.branches` filter and the job-level `github.ref` guard so manual dispatch from a non-main ref cannot update canonical images. An in-progress build for a superseded `main` revision may be canceled.
 

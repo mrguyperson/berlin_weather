@@ -142,7 +142,7 @@ make a change pass. Line coverage complements, rather than replaces, behavioral 
 
 The workflows under `.github/workflows/` keep distinct responsibilities:
 
-- **Tests:** pull requests and pushes to `main` build the proposed Dockerfile, check documentation paths, and run the offline test suite and R line-coverage floor inside that image.
+- **Tests:** every pull request gets one test job that checks documentation paths and the changed-path classifier. Only explicitly allowlisted documentation/process-only changes skip the Docker build, offline R suite, and coverage gate; unknown or mixed changes run them. Repository rules must require the successful PR check before merge. The Tests workflow does not rerun on the resulting `main` push.
 - **Canonical image:** the image workflow prepares current `main` revisions with commit-specific `sha-<commit>` images, using Buildx caching to reuse unchanged environment layers. A build for a superseded revision may be canceled; `latest` remains a moving convenience tag.
 - **Dashboard publication:** every dashboard revision that is published runs in its matching `sha-<commit>` image, never `latest`. Publication begins only after image preparation succeeds, and freshness checks prevent a superseded revision from being deployed.
 - **Historical-state reuse:** the publication workflow caches selected `{targets}` objects and metadata using the calendar year plus hashes of pipeline, function, and Docker inputs, avoiding unnecessary retrieval and recomputation when that state remains valid.
