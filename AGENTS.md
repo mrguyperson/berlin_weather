@@ -44,7 +44,24 @@ Before making a non-trivial change:
 
 If solving a problem requires broadening the requested scope, explain why before making additional changes.
 
-Do not change analytical behavior merely to make a test pass.
+## Test-driven implementation
+
+For non-trivial behavioral changes, follow this sequence:
+
+1. Write or extend the smallest deterministic test that expresses the required behavior.
+2. Run the focused test before changing production code and confirm that it fails for the expected reason.
+3. Implement the smallest change needed to satisfy the test.
+4. Rerun the focused test until it passes.
+5. Run relevant integration tests and the complete test suite before completion, as described in the Tests section.
+
+If a new test unexpectedly passes before implementation, investigate whether
+the behavior already exists or the test does not exercise the intended change
+before proceeding. Do not weaken existing tests or change analytical behavior
+merely to make a test pass.
+
+A failing pre-implementation test is not required for documentation-only work,
+mechanical configuration changes, or other changes without a meaningful
+behavioral test. Use validation appropriate to the change and the issue.
 
 ## Agent-assisted development
 
