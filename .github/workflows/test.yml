@@ -2,8 +2,10 @@ name: Tests
 
 on:
   pull_request:
-  push:
-    branches: ["main"]
+
+concurrency:
+  group: tests-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,14 +17,31 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check documentation paths
         run: python3 scripts/check_doc_paths.py
 
+      - name: Test changed-path classifier
+        run: python3 -m unittest discover -s tests -p 'test_classify_pr_changes.py'
+
+      - name: Classify changed paths
+        id: changes
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          run_full="$(git diff --name-only --no-renames -z "$PR_BASE_SHA" "$PR_HEAD_SHA" -- | python3 scripts/classify_pr_changes.py)" || run_full=true
+          echo "run_full=$run_full" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
+        if: steps.changes.outputs.run_full == 'true'
         uses: docker/setup-buildx-action@v4
 
       - name: Build test image
+        if: steps.changes.outputs.run_full == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -32,6 +51,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run tests
+        if: steps.changes.outputs.run_full == 'true'
         run: |
           docker run --rm \
             --mount type=bind,src="${{ github.workspace }}",dst=/project,readonly \
@@ -40,6 +60,7 @@ jobs:
             Rscript -e 'testthat::test_dir("tests/testthat")'
 
       - name: Check R line coverage
+        if: steps.changes.outputs.run_full == 'true'
         run: |
           docker run --rm \
             --mount type=bind,src="${{ github.workspace }}",dst=/project,readonly \
