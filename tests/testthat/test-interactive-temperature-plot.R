@@ -315,3 +315,74 @@ test_that("missing daily context produces an explicit fallback hover", {
     expect_true(all(grepl("Historical context unavailable",
         unique(all_fallback))))
 })
+
+test_that("temperature month ranges respect non-leap and leap calendars", {
+    ordinary <- make_temperature_month_ranges(as.Date(c(
+        "2025-01-01", "2025-09-16", "2025-12-31"
+    )))
+    expect_named(ordinary, c("Full year", month.abb))
+    expect_identical(ordinary[["Full year"]],
+        c("2024-12-31 12:00:00", "2025-12-31 12:00:00"))
+    expect_identical(ordinary[["Jan"]],
+        c("2024-12-31 12:00:00", "2025-01-31 12:00:00"))
+    expect_identical(ordinary[["Feb"]],
+        c("2025-01-31 12:00:00", "2025-02-28 12:00:00"))
+    expect_identical(ordinary[["Dec"]],
+        c("2025-11-30 12:00:00", "2025-12-31 12:00:00"))
+
+    leap <- make_temperature_month_ranges(as.Date(c(
+        "2028-01-01", "2028-02-28", "2028-12-31"
+    )))
+    expect_identical(leap[["Feb"]],
+        c("2028-01-31 12:00:00", "2028-02-29 12:00:00"))
+    expect_identical(leap[["Dec"]],
+        c("2028-11-30 12:00:00", "2028-12-31 12:00:00"))
+    expect_error(make_temperature_month_ranges(as.Date(character())),
+        "one calendar year")
+    expect_error(make_temperature_month_ranges(as.Date(c(
+        "2025-01-01", "2026-01-01"
+    ))), "one calendar year")
+})
+
+test_that("month menu changes only the date viewport and retains native navigation", {
+    inputs <- fixture_plot_inputs()
+    widget <- make_interactive_temperature_plot(
+        inputs$historical, inputs$current, inputs$records,
+        inputs$daily_context
+    )
+    built <- plotly::plotly_build(widget)
+    layout <- built$x$layout
+    ranges <- make_temperature_month_ranges(inputs$historical$date)
+
+    expect_identical(layout$xaxis$range, ranges[["Full year"]])
+    expect_identical(layout$xaxis$dtick, "M1")
+    expect_identical(layout$xaxis$tickformat, "%b")
+    expect_identical(layout$dragmode, "zoom")
+    expect_null(layout$xaxis$rangeslider)
+    expect_length(layout$updatemenus, 1L)
+    menu <- layout$updatemenus[[1]]
+    expect_identical(menu$type, "dropdown")
+    expect_identical(menu$active, 0L)
+    expect_identical(vapply(menu$buttons, `[[`, character(1), "label"),
+        c("Full year", month.abb))
+    for (label in names(ranges)) {
+        button <- menu$buttons[[match(label, names(ranges))]]
+        expect_identical(button$method, "relayout")
+        expect_named(button$args[[1]], "xaxis.range")
+        expect_identical(button$args[[1]][["xaxis.range"]], ranges[[label]])
+    }
+    expect_true(isTRUE(built$x$config$responsive))
+    expect_false(isTRUE(built$x$config$scrollZoom))
+    expect_identical(built$x$config$modeBarButtonsToRemove,
+        c("select2d", "lasso2d"))
+    expect_equal(length(built$x$data), 10L)
+
+    reversed <- lapply(inputs, function(data) data[rev(seq_len(nrow(data))), ])
+    reordered <- plotly::plotly_build(make_interactive_temperature_plot(
+        reversed$historical, reversed$current, reversed$records,
+        reversed$daily_context
+    ))
+    expect_identical(reordered$x$layout$xaxis, layout$xaxis)
+    expect_identical(reordered$x$layout$updatemenus, layout$updatemenus)
+    expect_identical(reordered$x$config, built$x$config)
+})
