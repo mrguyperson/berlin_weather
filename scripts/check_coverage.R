@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-# Reviewed issue #50 measurement: 74.15%. Floor rounded down to 0.1 percentage point.
+# Reviewed issue #52 measurement: 75.03%. Floor rounded down to 0.1 percentage point.
 # Raise the floor through reviewed changes; do not lower it merely to pass CI.
-minimum_coverage <- 74.1
+minimum_coverage <- 75.0
 
 source_files <- list.files("R", pattern = "[.]R$", full.names = TRUE, recursive = TRUE)
 helper_files <- list.files("tests/testthat", pattern = "^helper-.*[.]R$", full.names = TRUE)

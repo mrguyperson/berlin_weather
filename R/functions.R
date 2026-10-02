@@ -710,6 +710,23 @@ make_daily_range_hover_text <- function(hover_data) {
     text
 }
 
+make_temperature_month_ranges <- function(calendar_dates) {
+    if (!inherits(calendar_dates, "Date") || length(calendar_dates) == 0L ||
+        anyNA(calendar_dates) || length(unique(format(calendar_dates, "%Y"))) != 1L) {
+        stop("calendar_dates must contain dates from one calendar year.")
+    }
+
+    year <- unique(format(calendar_dates, "%Y"))
+    starts <- seq.Date(as.Date(paste0(year, "-01-01")),
+        by = "month", length.out = 13L)
+    bounds <- lapply(seq_len(12L), function(month) {
+        paste0(format(c(starts[[month]] - 1L, starts[[month + 1L]] - 1L),
+            "%Y-%m-%d"), " 12:00:00")
+    })
+    names(bounds) <- month.abb
+    c(list("Full year" = c(bounds[[1L]][[1L]], bounds[[12L]][[2L]])), bounds)
+}
+
 make_interactive_temperature_plot <- function(history_with_calendar, this_year, new_records,
                                               historical_daily_extreme_context) {
     history_with_calendar <- arrange(history_with_calendar, date)
@@ -820,13 +837,28 @@ make_interactive_temperature_plot <- function(history_with_calendar, this_year, 
         )
     }
 
-    plotly::layout(
+    month_ranges <- make_temperature_month_ranges(history_with_calendar$date)
+    month_buttons <- lapply(names(month_ranges), function(label) {
+        list(label = label, method = "relayout",
+             args = list(list("xaxis.range" = month_ranges[[label]])))
+    })
+
+    plotly::config(plotly::layout(
         figure,
-        xaxis = list(type = "date", dtick = "M1", tickformat = "%b", title = ""),
+        xaxis = list(type = "date", dtick = "M1", tickformat = "%b", title = "",
+                     range = month_ranges[["Full year"]]),
         yaxis = list(title = "", ticksuffix = "°C"),
         legend = list(x = 1.02, y = 1, font = list(size = 10)),
-        margin = list(l = 45, r = 180, t = 20, b = 40)
-    )
+        dragmode = "zoom",
+        updatemenus = list(list(
+            type = "dropdown", direction = "down", showactive = TRUE,
+            active = 0L, x = 0, xanchor = "left", y = 1.08,
+            yanchor = "bottom", font = list(size = 11),
+            buttons = month_buttons
+        )),
+        margin = list(l = 45, r = 180, t = 50, b = 40)
+    ), responsive = TRUE, scrollZoom = FALSE, displaylogo = FALSE,
+    modeBarButtonsToRemove = c("select2d", "lasso2d"))
 }
 
 get_top_10_list <- function(filtered_data, reference_time, type = "hottest") {
